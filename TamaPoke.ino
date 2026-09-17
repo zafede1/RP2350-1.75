@@ -165,12 +165,16 @@ uint32_t tStart = 0;
 bool holdFired = false;
 
 void setup() {
+#if defined(ARDUINO_ARCH_ESP32)
   Serial.setRxBufferSize(8192);  // la transferencia a SD llega en bloques de 2 KB
+#endif
   Serial.begin(115200);
   // CRITICO: sin esto, Serial.print BLOQUEA el juego cuando no hay un
   // monitor serie abierto en el host (el bufer TX del USB CDC se llena
   // y nadie lo vacia) -> con timeout 0 los mensajes se descartan
+#if defined(ARDUINO_ARCH_ESP32)
   Serial.setTxTimeoutMs(0);
+#endif
   Serial.printf("TamaPoke fw v%s\n", FW_VERSION);
   loadLang();  // idioma guardado (ES por defecto)
   Wire.begin(IIC_SDA, IIC_SCL);
