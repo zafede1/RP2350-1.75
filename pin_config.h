@@ -16,23 +16,30 @@
 #define IIC_SCL 7
 #define TP_INT 22
 #define TP_RESET 23
-#define I2S_MCK_IO 42
-#define I2S_BCK_IO 9
-#define I2S_DI_IO 10
-#define I2S_WS_IO 45
-#define I2S_DO_IO 8
-#define PA 46
+
+// Audio ES8311 della board Waveshare: BCLK=4, LRCLK=5, DOUT=1.
+// Il codec viene configurato come slave con clock derivato dal BCLK, quindi
+// non serve generare MCLK dal core Arduino-Pico durante la riproduzione.
+#define I2S_BCK_IO 4
+#define I2S_WS_IO 5
+#define I2S_DO_IO 1
+#define I2S_DI_IO 2
+#define I2S_MCK_IO 3
+#define PA 0
+
+// SDIO 1-bit: il core Arduino-Pico usa questa overload per il controller PIO.
 #define SDMMC_CLK 2
 #define SDMMC_CMD 1
 #define SDMMC_DATA 3
 #define SDMMC_CS 41
+
 #ifndef RGB565_BLACK
 #define RGB565_BLACK 0x0000
 #endif
 
 #ifdef ARDUINO_ARCH_RP2040
-// Compatibilità API: il core Arduino-Pico richiede setSDA/setSCL e begin(),
-// mentre il vecchio TamaPoke usa begin(sda,scl) e setTimeOut().
+// Compatibilità API: TamaPoke usa begin(sda,scl), mentre il core Arduino-Pico
+// richiede setSDA/setSCL + begin(). La board Waveshare usa I2C1 sui GPIO 6/7.
 class RP2350WireCompat {
 public:
   explicit RP2350WireCompat(TwoWire &impl) : impl_(impl) {}
@@ -42,7 +49,7 @@ public:
 private:
   TwoWire &impl_;
 };
-static RP2350WireCompat rp2350Wire(::Wire);
+static RP2350WireCompat rp2350Wire(::Wire1);
 #define Wire rp2350Wire
 
 // Compatibilità Serial: i metodi ESP32 setRxBufferSize/setTxTimeoutMs non esistono
