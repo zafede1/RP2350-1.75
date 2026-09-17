@@ -1,0 +1,55 @@
+name: RP2350 Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch or tag to build"
+        required: true
+        default: "rp2350-port"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  firmware:
+    name: Compile RP2350 firmware
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout selected ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Install arduino-cli
+        uses: arduino/setup-arduino-cli@v2
+
+      - name: Install RP2040/RP2350 core
+        run: |
+          arduino-cli config init --additional-urls https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json
+          arduino-cli core update-index
+          arduino-cli core install rp2040:rp2040@6.1.0
+
+      - name: Install graphics dependency
+        run: arduino-cli lib install "Adafruit GFX Library"
+
+      - name: Compile
+        run: |
+          mkdir -p build
+          arduino-cli compile --warnings=all --fqbn "rp2040:rp2040:rpipico2" --output-dir build .
+
+      - name: Collect UF2
+        run: |
+          set -e
+          UF2="$(find build -maxdepth 1 -type f -name '*.uf2' | head -n 1)"
+          test -n "$UF2"
+          cp "$UF2" build/TamaPoke-RP2350-1.75.uf2
+          ls -lh build/TamaPoke-RP2350-1.75.uf2
+
+      - name: Upload UF2 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TamaPoke-RP2350-1.75
+          path: build/TamaPoke-RP2350-1.75.uf2
+          retention-days: 30
