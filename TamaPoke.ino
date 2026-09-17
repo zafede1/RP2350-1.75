@@ -13,7 +13,7 @@
 #include <Wire.h>
 #include "Arduino_GFX_Library.h"
 #include "TouchDrvCSTXXX.hpp"
-#include <U8g2lib.h>  // fuentes CJK (japones); ver applyLangFont()
+#include "U8g2lib.h"  // font CJK compatibility shim for RP2350
 #include "pin_config.h"
 #include "species.h"
 #include "dex.h"
