@@ -2,12 +2,6 @@ name: RP2350 Build
 
 on:
   workflow_dispatch:
-    inputs:
-      ref:
-        description: "Branch or tag to build"
-        required: true
-        default: "rp2350-port"
-        type: string
 
 permissions:
   contents: read
@@ -17,10 +11,10 @@ jobs:
     name: Compile RP2350 firmware
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout selected ref
+      - name: Checkout RP2350 port
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref }}
+          ref: rp2350-port
 
       - name: Install arduino-cli
         uses: arduino/setup-arduino-cli@v2
