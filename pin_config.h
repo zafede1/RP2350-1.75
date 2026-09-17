@@ -31,8 +31,8 @@
 #endif
 
 #ifdef ARDUINO_ARCH_RP2040
-// Il core Arduino-Pico espone Wire.begin() + setSDA/setSCL, mentre TamaPoke
-// arriva dall'API ESP32 Wire.begin(sda,scl) / setTimeOut().
+// Compatibilità API: il core Arduino-Pico richiede setSDA/setSCL e begin(),
+// mentre il vecchio TamaPoke usa begin(sda,scl) e setTimeOut().
 class RP2350WireCompat {
 public:
   explicit RP2350WireCompat(TwoWire &impl) : impl_(impl) {}
@@ -44,4 +44,32 @@ private:
 };
 static RP2350WireCompat rp2350Wire(::Wire);
 #define Wire rp2350Wire
+
+// Compatibilità Serial: i metodi ESP32 setRxBufferSize/setTxTimeoutMs non esistono
+// su Arduino-Pico. Li rendiamo no-op mantenendo intatto il codice del gioco.
+class RP2350SerialCompat {
+public:
+  explicit RP2350SerialCompat(decltype(::Serial) &impl) : impl_(impl) {}
+  void begin(unsigned long baud) { impl_.begin(baud); }
+  void setRxBufferSize(size_t) {}
+  void setTxTimeoutMs(uint32_t) {}
+  void setTimeout(unsigned long ms) { impl_.setTimeout(ms); }
+  operator bool() const { return (bool)impl_; }
+  template <typename T> size_t print(const T &v) { return impl_.print(v); }
+  template <typename T> size_t println(const T &v) { return impl_.println(v); }
+  size_t println() { return impl_.println(); }
+  template <typename... Args> int printf(const char *fmt, Args... args) {
+    char buf[384]; int n = snprintf(buf, sizeof(buf), fmt, args...); if (n <= 0) return n; return (int)impl_.print(buf);
+  }
+  size_t write(uint8_t b) { return impl_.write(b); }
+  size_t write(const uint8_t *b, size_t n) { return impl_.write(b, n); }
+  int available() { return impl_.available(); }
+  int read() { return impl_.read(); }
+  size_t readBytes(char *b, size_t n) { return impl_.readBytes(b, n); }
+  size_t readBytes(uint8_t *b, size_t n) { return impl_.readBytes(b, n); }
+private:
+  decltype(::Serial) &impl_;
+};
+static RP2350SerialCompat rp2350Serial(::Serial);
+#define Serial rp2350Serial
 #endif
