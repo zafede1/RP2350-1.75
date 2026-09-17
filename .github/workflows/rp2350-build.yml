@@ -23,7 +23,7 @@ jobs:
         run: |
           arduino-cli config init --additional-urls https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json
           arduino-cli core update-index
-          arduino-cli core install rp2040:rp2040@6.1.0
+          arduino-cli core install rp2040:rp2040@6.0.0
 
       - name: Install graphics dependency
         run: arduino-cli lib install "Adafruit GFX Library"
@@ -37,7 +37,7 @@ jobs:
       - name: Compile
         run: |
           mkdir -p build
-          arduino-cli compile --warnings=all --fqbn "rp2040:rp2040:rpipico2" --output-dir "$GITHUB_WORKSPACE/build" /tmp/TamaPoke
+          arduino-cli compile --clean --warnings=all             --fqbn "rp2040:rp2040:rpipico2"             --output-dir "$GITHUB_WORKSPACE/build" /tmp/TamaPoke
 
       - name: Collect UF2
         run: |
