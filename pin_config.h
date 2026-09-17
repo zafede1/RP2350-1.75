@@ -1,7 +1,7 @@
 #pragma once
 #include <Wire.h>
 
-// Waveshare RP2350 Touch AMOLED 1.75" — pinout ufficiale.
+// Waveshare RP2350 Touch AMOLED 1.75" — official pinout.
 #define XPOWERS_CHIP_AXP2101
 #define LCD_SDIO0 12
 #define LCD_SDIO1 13
@@ -17,9 +17,7 @@
 #define TP_INT 22
 #define TP_RESET 23
 
-// Audio ES8311 della board Waveshare: BCLK=4, LRCLK=5, DOUT=1.
-// Il codec viene configurato come slave con clock derivato dal BCLK, quindi
-// non serve generare MCLK dal core Arduino-Pico durante la riproduzione.
+// Waveshare ES8311 audio pins.
 #define I2S_BCK_IO 4
 #define I2S_WS_IO 5
 #define I2S_DO_IO 1
@@ -27,7 +25,7 @@
 #define I2S_MCK_IO 3
 #define PA 0
 
-// SDIO 1-bit: il core Arduino-Pico usa questa overload per il controller PIO.
+// SDIO PIO pins.
 #define SDMMC_CLK 2
 #define SDMMC_CMD 1
 #define SDMMC_DATA 3
@@ -38,8 +36,10 @@
 #endif
 
 #ifdef ARDUINO_ARCH_RP2040
-// Compatibilità API: TamaPoke usa begin(sda,scl), mentre il core Arduino-Pico
-// richiede setSDA/setSCL + begin(). La board Waveshare usa I2C1 sui GPIO 6/7.
+#ifndef IRAM_ATTR
+#define IRAM_ATTR
+#endif
+
 class RP2350WireCompat {
 public:
   explicit RP2350WireCompat(TwoWire &impl) : impl_(impl) {}
@@ -52,8 +52,6 @@ private:
 static RP2350WireCompat rp2350Wire(::Wire1);
 #define Wire rp2350Wire
 
-// Compatibilità Serial: i metodi ESP32 setRxBufferSize/setTxTimeoutMs non esistono
-// su Arduino-Pico. Li rendiamo no-op mantenendo intatto il codice del gioco.
 class RP2350SerialCompat {
 public:
   explicit RP2350SerialCompat(decltype(::Serial) &impl) : impl_(impl) {}
