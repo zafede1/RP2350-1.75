@@ -1,4 +1,4 @@
-name: CI
+name: RP2350 Port CI
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
 
 jobs:
   firmware:
-    name: Compile RP2350 firmware
+    name: Compile RP2350 firmware and UF2
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
