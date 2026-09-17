@@ -34,10 +34,16 @@ jobs:
       - name: Install graphics dependency
         run: arduino-cli lib install "Adafruit GFX Library"
 
+      - name: Prepare Arduino sketch directory
+        run: |
+          rm -rf /tmp/TamaPoke
+          mkdir -p /tmp/TamaPoke
+          rsync -a --exclude='.git/' --exclude='build/' ./ /tmp/TamaPoke/
+
       - name: Compile
         run: |
           mkdir -p build
-          arduino-cli compile --warnings=all --fqbn "rp2040:rp2040:rpipico2" --output-dir build .
+          arduino-cli compile --warnings=all --fqbn "rp2040:rp2040:rpipico2" --output-dir "$GITHUB_WORKSPACE/build" /tmp/TamaPoke
 
       - name: Collect UF2
         run: |
