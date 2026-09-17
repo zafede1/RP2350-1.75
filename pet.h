@@ -1,6 +1,6 @@
 #pragma once
 #include <Arduino.h>
-#include <Preferences.h>
+#include "Preferences.h"
 
 // 1 tick = 1 minuto de juego. Baja este valor para probar mas rapido
 // (p. ej. 5000UL = las estadisticas caen 12x mas rapido).
