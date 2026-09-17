@@ -44,7 +44,16 @@ class RP2350WireCompat {
 public:
   explicit RP2350WireCompat(TwoWire &impl) : impl_(impl) {}
   void begin(int sda, int scl) { impl_.setSDA(sda); impl_.setSCL(scl); impl_.begin(); }
-  void setTimeOut(uint32_t) {}
+  void setTimeOut(uint32_t ms) { impl_.setTimeout(ms); }
+  void beginTransmission(uint8_t addr) { impl_.beginTransmission(addr); }
+  uint8_t endTransmission() { return impl_.endTransmission(); }
+  uint8_t endTransmission(bool stopBit) { return impl_.endTransmission(stopBit); }
+  size_t requestFrom(uint8_t addr, size_t len) { return impl_.requestFrom(addr, len); }
+  size_t requestFrom(uint8_t addr, size_t len, bool stopBit) { return impl_.requestFrom(addr, len, stopBit); }
+  size_t write(uint8_t b) { return impl_.write(b); }
+  using TwoWire::write;
+  int available() { return impl_.available(); }
+  int read() { return impl_.read(); }
   operator TwoWire &() { return impl_; }
 private:
   TwoWire &impl_;
@@ -72,6 +81,12 @@ public:
   int read() { return impl_.read(); }
   size_t readBytes(char *b, size_t n) { return impl_.readBytes(b, n); }
   size_t readBytes(uint8_t *b, size_t n) { return impl_.readBytes(b, n); }
+  String readStringUntil(char terminator) {
+    char buf[512];
+    size_t n = impl_.readBytesUntil(terminator, buf, sizeof(buf) - 1);
+    buf[n] = '\0';
+    return String(buf);
+  }
 private:
   decltype(::Serial) &impl_;
 };
