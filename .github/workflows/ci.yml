@@ -26,8 +26,11 @@ jobs:
 
       - name: Compile
         run: |
+          rm -rf /tmp/TamaPoke
+          mkdir -p /tmp/TamaPoke
+          rsync -a --exclude='.git/' --exclude='build/' ./ /tmp/TamaPoke/
           mkdir -p build
-          arduino-cli compile --warnings=all --fqbn "rp2040:rp2040:rpipico2" --output-dir build .
+          arduino-cli compile --warnings=all --fqbn "rp2040:rp2040:rpipico2" --output-dir "$GITHUB_WORKSPACE/build" /tmp/TamaPoke
 
       - name: Collect UF2
         run: |
