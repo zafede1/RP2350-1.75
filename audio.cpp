@@ -3,7 +3,7 @@
 #include "sdmon.h"
 #include <Arduino.h>
 #include <I2S.h>
-#include <Preferences.h>
+#include "Preferences.h"
 #include <Wire.h>
 
 #define ES8311_ADDR 0x18
