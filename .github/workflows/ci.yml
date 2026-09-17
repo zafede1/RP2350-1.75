@@ -38,6 +38,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: TamaPoke-RP2350-1.75
+          retention-days: 30
           path: build/TamaPoke-RP2350-1.75.uf2
 
   generated:
