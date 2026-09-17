@@ -60,35 +60,4 @@ private:
 static RP2350WireCompat rp2350Wire(::Wire1);
 #define Wire rp2350Wire
 
-class RP2350SerialCompat {
-public:
-  explicit RP2350SerialCompat(decltype(::Serial) &impl) : impl_(impl) {}
-  void begin(unsigned long baud) { impl_.begin(baud); }
-  void setRxBufferSize(size_t) {}
-  void setTxTimeoutMs(uint32_t) {}
-  void setTimeout(unsigned long ms) { impl_.setTimeout(ms); }
-  operator bool() const { return (bool)impl_; }
-  template <typename T> size_t print(const T &v) { return impl_.print(v); }
-  template <typename T> size_t println(const T &v) { return impl_.println(v); }
-  size_t println() { return impl_.println(); }
-  template <typename... Args> int printf(const char *fmt, Args... args) {
-    char buf[384]; int n = snprintf(buf, sizeof(buf), fmt, args...); if (n <= 0) return n; return (int)impl_.print(buf);
-  }
-  size_t write(uint8_t b) { return impl_.write(b); }
-  size_t write(const uint8_t *b, size_t n) { return impl_.write(b, n); }
-  int available() { return impl_.available(); }
-  int read() { return impl_.read(); }
-  size_t readBytes(char *b, size_t n) { return impl_.readBytes(b, n); }
-  size_t readBytes(uint8_t *b, size_t n) { return impl_.readBytes(b, n); }
-  String readStringUntil(char terminator) {
-    char buf[512];
-    size_t n = impl_.readBytesUntil(terminator, buf, sizeof(buf) - 1);
-    buf[n] = '\0';
-    return String(buf);
-  }
-private:
-  decltype(::Serial) &impl_;
-};
-static RP2350SerialCompat rp2350Serial(::Serial);
-#define Serial rp2350Serial
 #endif
