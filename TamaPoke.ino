@@ -173,12 +173,14 @@ void setup() {
 #endif
   Serial.printf("TamaPoke fw v%s\n", FW_VERSION);
   loadLang();  // idioma guardado (ES por defecto)
-  Wire.begin(IIC_SDA, IIC_SCL);
+  Wire1.setSDA(IIC_SDA);
+  Wire1.setSCL(IIC_SCL);
+  Wire1.begin();
   // CST9217 (tactil), AXP2101 (PMU) y PCF85063 (RTC) comparten este bus I2C.
   // Red de seguridad para PMU/RTC (SensorLib NO respeta este timeout en el
   // tactil; el cuelgue del tactil dormido se resuelve gateando por INT, ver
   // handleTouch).
-  Wire.setTimeOut(50);
+  Wire1.setTimeout(50);
 
   // CRITICO: encender la alimentacion del panel (BLDO1=OLED VDD 3.3V) ANTES de
   // inicializar el display. Si el PMU se reseteo (drenaje total), este rail
@@ -194,7 +196,7 @@ void setup() {
   touch.setPins(TP_RESET, TP_INT);
   bool touchOk = false;
   for (int i = 0; i < 3 && !touchOk; i++) {  // a veces falla al primer intento
-    touchOk = touch.begin(Wire, 0x5A, IIC_SDA, IIC_SCL);
+    touchOk = touch.begin(Wire1, 0x5A, IIC_SDA, IIC_SCL);
     if (!touchOk) delay(150);
   }
   if (!touchOk) Serial.println("CST9217 no detectado");
@@ -491,8 +493,8 @@ void handleTouch() {
   // El contador de rechazos salio 0 en ambos casos, asi que NO funciona
   // saltandose lecturas cuando el chip no contesta: lo que hace es despertarlo,
   // para que la lectura siguiente no se encuentre el CST9217 dormido.
-  Wire.beginTransmission(TOUCH_ADDR);
-  if (Wire.endTransmission() != 0) return;  // no responde: se reintenta en 20 ms
+  Wire1.beginTransmission(TOUCH_ADDR);
+  if (Wire1.endTransmission() != 0) return;  // no responde: se reintenta en 20 ms
   int16_t x, y;
   bool pressed = touch.getPoint(&x, &y, 1) > 0;
 
@@ -1950,7 +1952,7 @@ void renderGallery() {
           printT("*");
         }
       } else {
-        char num[6];
+        char num[8];
         snprintf(num, sizeof(num), "%d", dex);
         gfx->setTextColor(UI_TRACK);
         setSize(2);
