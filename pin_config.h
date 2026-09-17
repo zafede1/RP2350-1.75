@@ -51,7 +51,6 @@ public:
   size_t requestFrom(uint8_t addr, size_t len) { return impl_.requestFrom(addr, len); }
   size_t requestFrom(uint8_t addr, size_t len, bool stopBit) { return impl_.requestFrom(addr, len, stopBit); }
   size_t write(uint8_t b) { return impl_.write(b); }
-  using TwoWire::write;
   int available() { return impl_.available(); }
   int read() { return impl_.read(); }
   operator TwoWire &() { return impl_; }
