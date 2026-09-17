@@ -23,7 +23,7 @@ public:
 struct RP2350ESPCompat {
   uint32_t getFreeHeap() const { return 520 * 1024u; }
   uint32_t getMinFreeHeap() const { return 520 * 1024u; }
-  void restart() const { NVIC_SystemReset(); }
+  void restart() const { rp2040.reboot(); }
 };
 static RP2350ESPCompat ESP;
 #ifndef IRAM_ATTR
