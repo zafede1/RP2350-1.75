@@ -13,7 +13,7 @@ class Preferences {
 public:
   bool begin(const char *ns, bool readOnly = false, const char *partition = "") {
     (void)ns; (void)partition; readOnly_ = readOnly;
-    if (!EEPROM.begin(EEPROM_SIZE)) return false;
+    EEPROM.begin(EEPROM_SIZE);
     if (EEPROM.read(0) != 'T' || EEPROM.read(1) != 'P' || EEPROM.read(2) != 'R' || EEPROM.read(3) != '1') {
       for (uint16_t i = 0; i < EEPROM_SIZE; ++i) EEPROM.write(i, 0xFF);
       EEPROM.write(0, 'T'); EEPROM.write(1, 'P'); EEPROM.write(2, 'R'); EEPROM.write(3, '1');
