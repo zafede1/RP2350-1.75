@@ -2424,7 +2424,7 @@ void drawPetPMD() {
         act = (d > 0) ? PMD_WALKR : PMD_WALKL;
       }
     } else {
-      act = (beh.mode == 2) ? beh.act : PMD_IDLE;
+      act = (beh.mode == 2) ? beh.act : (uint8_t)PMD_IDLE;
       loop = false;
     }
     if (!pmd.has(act)) act = PMD_IDLE;
