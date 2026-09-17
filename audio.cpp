@@ -176,13 +176,21 @@ void audioBegin() {
   gOn = p.getBool("snd", true);
   p.end();
 
-  gReady = es8311Init();
-  if (!gReady) {
-    Serial.println("ES8311 non risponde: audio disattivato");
+  // L'ES8311 usa il BCLK come sorgente di clock: il PIO I2S deve quindi essere
+  // gia attivo quando scriviamo i registri del codec.
+  if (!startI2S()) {
+    Serial.println("I2S init fallito: audio disattivato");
     return;
   }
+  if (!es8311Init()) {
+    Serial.println("ES8311 non risponde: audio disattivato");
+    stopI2S();
+    return;
+  }
+  gReady = true;
 
-  // Jingle di avvio: eseguito ora che la periferica e stata verificata.
+  // Jingle di avvio. La riproduzione chiude subito I2S e rende di nuovo
+  // disponibili i pin condivisi con la SD.
   sfxPlay(SFX_HATCH);
 }
 
@@ -194,7 +202,7 @@ void sfxPlay(uint8_t id) {
   }
 
   digitalWrite(PA, HIGH);
-  delay(8);  // stabilizzazione dell'amplificatore NS4150B
+  delay(8);
 
   const SfxDef &d = SFX[id];
   for (uint8_t i = 0; i < d.len && gOn && !gSleeping; ++i) {
