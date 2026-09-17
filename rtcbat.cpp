@@ -14,7 +14,7 @@ static uint8_t decToBcd(uint8_t v) { return ((v / 10) << 4) | (v % 10); }
 static bool rtcRead(uint8_t reg, uint8_t *data, size_t n) {
   Wire1.beginTransmission(RTC_ADDR); Wire1.write(reg);
   if (Wire1.endTransmission(false) != 0) return false;
-  if (Wire1.requestFrom(RTC_ADDR, (uint8_t)n) != (int)n) return false;
+  if (Wire1.requestFrom(RTC_ADDR, n) != n) return false;
   for (size_t i = 0; i < n; ++i) data[i] = Wire1.read();
   return true;
 }
