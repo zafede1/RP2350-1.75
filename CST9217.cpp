@@ -8,7 +8,7 @@ static bool readReg16(uint16_t reg, uint8_t *dst, size_t len) {
   Wire1.write((uint8_t)(reg >> 8));
   Wire1.write((uint8_t)reg);
   if (Wire1.endTransmission(false) != 0) return false;
-  if (Wire1.requestFrom(CST9217_I2C_ADDR, (uint8_t)len) != (int)len) return false;
+  if (Wire1.requestFrom(CST9217_I2C_ADDR, len) != len) return false;
   for (size_t i = 0; i < len; ++i) dst[i] = Wire1.read();
   return true;
 }
