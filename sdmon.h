@@ -3,14 +3,15 @@
 
 // Sprite animado TPK1 (formato heredado, camino de respaldo). El proyecto usa
 // PMD/TPK2 (PmdMon) para todo; esta ruta queda inactiva si no hay NNN.bin en la SD.
-// Los datos indexados viven en PSRAM; la paleta es RGB565.
+// RP2350 no necesita PSRAM: se impone un presupuesto comun de SRAM para sprites.
 struct SdMon {
   bool loaded = false;
   uint16_t w = 0, h = 0, frames = 0, frameMs = 100;
-  uint8_t scale = 2;       // factor de zoom entero al dibujar
+  uint8_t scale = 2;
   uint16_t palCount = 0;
   uint16_t pal[256];
-  uint8_t *data = nullptr;  // frames * w * h indices (0xFF = transparente)
+  uint8_t *data = nullptr;
+  uint32_t dataSize = 0;
 
   bool load(uint8_t dexNum, bool shiny = false);
   void unload();
@@ -25,17 +26,18 @@ enum : uint8_t {
 
 struct PmdAct {
   uint8_t w = 0, h = 0, frames = 0;
-  uint8_t base = 0;  // fila+1 del pixel mas bajo (anclar por los pies, no el lienzo)
+  uint8_t base = 0;
   uint16_t ms[24];
-  const uint8_t *data = nullptr;  // frames * w * h en el blob
+  const uint8_t *data = nullptr;
 };
 
-// sprite PMD multi-accion cargado de la SD a PSRAM
+// sprite PMD multi-accion cargado de la SD a SRAM.
 struct PmdMon {
   bool loaded = false;
   uint16_t palCount = 0;
   uint16_t pal[256];
   uint8_t *blob = nullptr;
+  uint32_t blobSize = 0;
   PmdAct acts[PMD_NACTS];
 
   bool load(uint8_t dexNum, bool shiny = false);
@@ -43,19 +45,25 @@ struct PmdMon {
   bool has(uint8_t a) const { return loaded && a < PMD_NACTS && acts[a].frames > 0; }
 };
 
-// miniaturas de la galeria (thumbs.bin entero en PSRAM)
+// Miniaturas de la galeria: solo se conserva la tabla de offsets y un unico
+// buffer de trabajo. get() devuelve un puntero valido hasta la siguiente llamada.
+// Asi la galeria no consume decenas de KB junto al framebuffer completo de 466x466.
 struct SdThumbs {
   bool loaded = false;
-  uint8_t *data = nullptr;
   uint16_t count = 0;
-  uint32_t size = 0;  // bytes leidos: acota los offsets del fichero
+  uint32_t size = 0;
+  uint32_t offsets[151] = {};
+  mutable uint8_t scratch[4096] = {};
+  mutable int16_t cachedDex = -1;
+
   bool load();
-  void unload();  // libera el blob: recargar tras recibir un thumbs.bin nuevo
-  const uint8_t *get(int16_t dex) const;  // blob: w,h,palCount,pal[],idx[]
+  void unload();
+  const uint8_t *get(int16_t dex) const;
 };
 extern SdThumbs thumbs;
 
-bool sdBegin();                 // monta la SD (SDMMC 1-bit), true si hay tarjeta
-bool sdSerialCommand(const String &line);  // PUT/LS por USB; true si la maneja
+bool sdBegin();
+bool sdSerialCommand(const String &line);
+void sdInvalidateMount();
 extern bool sdReady;
-extern bool sdDirty;  // true tras recibir archivos: recargar sprite
+extern bool sdDirty;
