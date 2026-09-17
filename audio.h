@@ -1,24 +1,24 @@
 #pragma once
 #include <stdint.h>
 
-// Efectos de sonido del juego (cola, no bloqueante). El orden coincide con la
-// tabla SFX de audio.cpp.
+// Efectos de sonido del juego. En RP2350 se reproducen de forma sincronica
+// durante unas pocas decenas de ms y despues liberan los pines compartidos con SD.
 enum Sfx : uint8_t {
-  SFX_TAP = 0,  // tocar / boton
-  SFX_EAT,      // comer
-  SFX_PLAY,     // punto del minijuego / golpe
-  SFX_HEART,    // le gusta / mimo
-  SFX_HATCH,    // eclosion
-  SFX_EVOLVE,   // evolucion
-  SFX_MEDAL,    // medalla / hito
-  SFX_DENY,     // accion no permitida
-  SFX_BYE,      // despedida
-  SFX_LEVEL,    // sube de nivel
+  SFX_TAP = 0,
+  SFX_EAT,
+  SFX_PLAY,
+  SFX_HEART,
+  SFX_HATCH,
+  SFX_EVOLVE,
+  SFX_MEDAL,
+  SFX_DENY,
+  SFX_BYE,
+  SFX_LEVEL,
   SFX_COUNT
 };
 
-void audioBegin();          // init ES8311 + I2S + amplificador + tarea de audio
-void sfxPlay(uint8_t id);   // encola un efecto (no bloquea el loop)
+void audioBegin();
+void sfxPlay(uint8_t id);
 void audioSetEnabled(bool on);
 bool audioEnabled();
-void audioSetSleeping(bool sleeping);  // dormida: amplificador apagado
+void audioSetSleeping(bool sleeping);
