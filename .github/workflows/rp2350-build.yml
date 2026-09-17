@@ -1,6 +1,8 @@
 name: RP2350 Build
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
