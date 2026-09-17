@@ -27,12 +27,8 @@
 // el instalador web). Se muestra en la pantalla de ajustes y por serie al arrancar.
 #define FW_VERSION "1.16"
 
-Arduino_DataBus *bus = new Arduino_ESP32QSPI(
-  LCD_CS, LCD_SCLK, LCD_SDIO0, LCD_SDIO1, LCD_SDIO2, LCD_SDIO3);
-Arduino_CO5300 *panel = new Arduino_CO5300(
-  bus, LCD_RESET, 0 /*rotation*/, LCD_WIDTH, LCD_HEIGHT, 6, 0, 0, 0);
-// Framebuffer completo en PSRAM: dibujamos todo y hacemos flush() (sin parpadeo)
-Arduino_Canvas *gfx = new Arduino_Canvas(LCD_WIDTH, LCD_HEIGHT, panel);
+// RP2350-native graphics backend: QSPI CO5300 panel + Adafruit-GFX-compatible drawing.
+TamaGFX *gfx = &tamaGfx;
 
 TouchDrvCST92xx touch;
 // fuente CJK activa: de momento siempre false, la carga llegara con el
@@ -320,8 +316,8 @@ void loop() {
   static uint32_t lastHealth = 0;
   if (now - lastHealth > 300000) {
     lastHealth = now;
-    Serial.printf("HEALTH up=%lus heap=%u min=%u bat=%d%% mv=%d chg=%d usb=%d dim=%u off=%d\n",
-                  (unsigned long)(now / 1000), rp2040.getFreeHeap(), rp2040.getFreeHeap(),
+    Serial.printf("HEALTH up=%lus heap=%u bat=%d%% mv=%d chg=%d usb=%d dim=%u off=%d\n",
+                  (unsigned long)(now / 1000), rp2040.getFreeHeap(),
                   batPercent(), batMillivolts(), batCharging() ? 1 : 0,
                   usbPresent() ? 1 : 0, dimStage, screenOff ? 1 : 0);
   }
