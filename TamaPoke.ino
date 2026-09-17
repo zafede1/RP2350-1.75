@@ -1,11 +1,11 @@
 // TamaPoke - tamagotchi pixel art inspirado en la gen 1
-// para Waveshare ESP32-S3-Touch-AMOLED-1.75
+// para Waveshare RP2350-Touch-AMOLED-1.75
 //
 // Librerias (Library Manager o repo de Waveshare):
 //   - "GFX Library for Arduino" (moononournation), con soporte CO5300 QSPI
 //   - "SensorLib" (Lewis He), driver tactil CST9217
 //
-// Placa: ESP32S3 Dev Module | Flash 16MB | PSRAM: OPI PSRAM | USB CDC On Boot: Enabled
+// Placa: Raspberry Pi Pico 2 / RP2350, 16MB flash, USB nativo
 //
 // Los sprites y la tabla de especies se generan con tools/sprites.py (emit).
 
@@ -356,7 +356,7 @@ void updateBrightness(uint32_t now) {
   static uint8_t current = 255;
   if (target != current) {
     current = target;
-    panel->setBrightness(target);
+    gfx->setBrightness(target);
   }
 }
 
@@ -436,10 +436,10 @@ void handleSerial() {
     pet.dbgRunawayReady();  // fuerza el estado "lista para escaparse" (test del boton)
     Serial.println("DONE");
   } else if (line == "WIPE") {
-    pet.factoryReset();     // borra NVS y reinicia -> partida nueva (eleccion de inicial)
+    pet.factoryReset();     // borra EEPROM y reinicia -> partida nueva (eleccion de inicial)
     Serial.println("DONE");
     delay(100);
-    ESP.restart();
+    rp2040.reboot();
   } else if (line == "REG") {
     Serial.printf("pokedex %u/151:", pet.registeredCount());
     for (int i = 1; i <= 151; i++)
