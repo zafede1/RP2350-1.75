@@ -19,12 +19,7 @@ jobs:
         run: |
           arduino-cli config init --additional-urls https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json
           arduino-cli core update-index
-          arduino-cli core install rp2040:rp2040@6.1.0
-          # arduino-pico bundles the optional iLabs Hearth library, which targets
-          # Challenger boards with an ESP32-C6 co-processor. TamaPoke runs on the
-          # generic RP2350 and does not use Hearth; exclude it from discovery so
-          # its board-specific compile-time checks cannot break this build.
-          find "$HOME/.arduino15/packages/rp2040/hardware/rp2040/6.1.0/libraries" -maxdepth 1 -type d -name "iLabs_Hearth" -prune -exec rm -rf {} +
+          arduino-cli core install rp2040:rp2040@6.0.0
 
       - name: Install graphics dependency
         run: arduino-cli lib install "Adafruit GFX Library"
@@ -37,7 +32,6 @@ jobs:
           mkdir -p build
           arduino-cli compile --clean --warnings=all \
             --fqbn "rp2040:rp2040:rpipico2" \
-            --build-property compiler.cpp.extra_flags="-DHEARTH_SERIAL_PORT=Serial1" \
             --output-dir "$GITHUB_WORKSPACE/build" /tmp/TamaPoke
 
       - name: Collect UF2
