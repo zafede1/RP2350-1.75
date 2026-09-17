@@ -34,7 +34,7 @@ void TamaGFX::drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color) {
   if (x < 0) { w += x; x = 0; }
   if (x + w > _width) w = _width - x;
   if (w <= 0) return;
-  uint16_t *p = &framebuffer[(size_t)y * W + x];
+  uint16_t *p = &framebuffer[(size_t)y * AMOLED_1IN75_WIDTH + x];
   for (int16_t i = 0; i < w; ++i) p[i] = color;
 }
 void TamaGFX::drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color) {
@@ -42,7 +42,7 @@ void TamaGFX::drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color) {
   if (y < 0) { h += y; y = 0; }
   if (y + h > _height) h = _height - y;
   if (h <= 0) return;
-  for (int16_t i = 0; i < h; ++i) framebuffer[(size_t)(y + i) * W + x] = color;
+  for (int16_t i = 0; i < h; ++i) framebuffer[(size_t)(y + i) * AMOLED_1IN75_WIDTH + x] = color;
 }
 void TamaGFX::fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color) {
   if (w <= 0 || h <= 0) return;
@@ -52,7 +52,7 @@ void TamaGFX::fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t colo
   if (y + h > _height) h = _height - y;
   if (w <= 0 || h <= 0) return;
   for (int16_t yy = 0; yy < h; ++yy) {
-    uint16_t *p = &framebuffer[(size_t)(y + yy) * W + x];
+    uint16_t *p = &framebuffer[(size_t)(y + yy) * AMOLED_1IN75_WIDTH + x];
     for (int16_t xx = 0; xx < w; ++xx) p[xx] = color;
   }
 }
