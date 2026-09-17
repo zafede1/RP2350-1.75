@@ -6,7 +6,7 @@
 
 class Preferences {
   static constexpr uint16_t EEPROM_SIZE = 4096;
-  static constexpr uint8_t SLOT_COUNT = 63; // 4 + 63*64 = 4036 bytes
+  static constexpr uint8_t SLOT_COUNT = 63;
   static constexpr uint8_t SLOT_SIZE = 64;
   static constexpr uint8_t KEY_SIZE = 16;
   static constexpr uint8_t DATA_SIZE = 44;
@@ -24,20 +24,17 @@ public:
   void end() { if (!readOnly_) EEPROM.commit(); }
   void clear() { if (readOnly_) return; for (uint16_t i = 4; i < EEPROM_SIZE; ++i) EEPROM.write(i, 0xFF); EEPROM.commit(); }
   bool isKey(const char *key) const { return findSlot(key) >= 0; }
-
   size_t putBytes(const char *key, const void *value, size_t len) { return putRaw(key, value, min(len, (size_t)DATA_SIZE), 1); }
   size_t getBytes(const char *key, void *value, size_t len) const { return getRaw(key, value, len); }
   size_t putString(const char *key, const String &value) { return putRaw(key, value.c_str(), min((size_t)value.length(), (size_t)(DATA_SIZE - 1)), 2); }
-  size_t putString(const char *key, const char *value) { return putString(key, String(value)); }
+  size_t putString(const char *key, const char *value) { size_t n = putString(key, String(value)); if (!readOnly_) EEPROM.commit(); return n; }
   String getString(const char *key, const String &def = String()) const {
     char buf[DATA_SIZE + 1]; memset(buf, 0, sizeof(buf));
     size_t n = getRaw(key, buf, DATA_SIZE); if (!n) return def; buf[min(n, (size_t)DATA_SIZE)] = 0; return String(buf);
   }
   size_t getString(const char *key, char *value, size_t maxLen) const {
     if (!value || maxLen == 0) return 0;
-    size_t n = getRaw(key, value, maxLen - 1);
-    value[n] = 0;
-    return n;
+    size_t n = getRaw(key, value, maxLen - 1); value[n] = 0; return n;
   }
   uint8_t putUChar(const char *key, uint8_t v) { return (uint8_t)putNum(key, v, 3); }
   uint8_t getUChar(const char *key, uint8_t def = 0) const { uint8_t v; return getNum(key, v, def); }
@@ -45,11 +42,11 @@ public:
   bool getBool(const char *key, bool def = false) const { uint8_t v; return getNum(key, v, (uint8_t)def) != 0; }
   uint32_t putUInt(const char *key, uint32_t v) { return putNum32(key, v, 5); }
   uint32_t getUInt(const char *key, uint32_t def = 0) const { return getNum32(key, def); }
-  int16_t putShort(const char *key, int16_t v) { return (int16_t)putNum32(key, (uint16_t)v, 6); }
+  int16_t putShort(const char *key, int16_t v) { putNum32(key, (uint16_t)v, 6); return v; }
   int16_t getShort(const char *key, int16_t def = 0) const { return (int16_t)getNum32(key, (uint16_t)def); }
-  uint16_t putUShort(const char *key, uint16_t v) { return (uint16_t)putNum32(key, v, 7); }
+  uint16_t putUShort(const char *key, uint16_t v) { putNum32(key, v, 7); return v; }
   uint16_t getUShort(const char *key, uint16_t def = 0) const { return (uint16_t)getNum32(key, def); }
-  int8_t putChar(const char *key, int8_t v) { return (int8_t)putNum(key, (uint8_t)v, 8); }
+  int8_t putChar(const char *key, int8_t v) { putNum(key, (uint8_t)v, 8); return v; }
   int8_t getChar(const char *key, int8_t def = 0) const { uint8_t v; return (int8_t)getNum(key, v, (uint8_t)def); }
   bool commit() { return EEPROM.commit(); }
 private:
@@ -57,8 +54,7 @@ private:
   int slotOffset(uint8_t s) const { return 4 + s * SLOT_SIZE; }
   int findSlot(const char *key) const {
     for (uint8_t s = 0; s < SLOT_COUNT; ++s) {
-      int off = slotOffset(s);
-      if (EEPROM.read(off) != 0xA5) continue;
+      int off = slotOffset(s); if (EEPROM.read(off) != 0xA5) continue;
       char k[KEY_SIZE + 1] = {};
       for (uint8_t i = 0; i < KEY_SIZE; ++i) k[i] = (char)EEPROM.read(off + 4 + i);
       if (strncmp(k, key, KEY_SIZE) == 0) return off;
