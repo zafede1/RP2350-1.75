@@ -6,7 +6,6 @@
 #include <Preferences.h>
 #include <Wire.h>
 
-// ES8311 della Waveshare RP2350-Touch-AMOLED-1.75.
 #define ES8311_ADDR 0x18
 #define SAMPLE_RATE 16000
 
@@ -31,9 +30,6 @@ static uint8_t esR(uint8_t reg) {
   return Wire1.read();
 }
 
-// Init ripresa dal driver TamaPoke verificato sull'ES8311: clock derivato dal
-// BCLK, nessun MCLK esterno necessario. Il core Arduino-Pico genera BCLK/LRCLK
-// via PIO, mantenendo l'uscita temporanea per non interferire con la SD.
 static bool es8311Init() {
   Wire1.beginTransmission(ES8311_ADDR);
   if (Wire1.endTransmission() != 0) return false;
@@ -67,7 +63,6 @@ static bool es8311Init() {
   { uint8_t r = esR(0x07); r &= 0xC0; esW(0x07, r); }
   esW(0x08, 0xFF);
   { uint8_t r = esR(0x06); r &= 0xE0; r |= 0x03; esW(0x06, r); }
-
   esW(0x09, 0x0C);
   esW(0x0A, 0x0C);
 
@@ -110,11 +105,10 @@ static const SfxDef SFX[SFX_COUNT] = {
 static bool startI2S() {
   if (gRunning) return true;
 
-  // Board Waveshare: BCLK=4, LRCLK=5 (vincolo PIO del core), DOUT=1.
-  // GPIO1 e anche SD CMD, quindi il link SD viene invalidato dopo ogni suono
-  // e rimontato automaticamente alla prossima operazione su microSD.
-  if (!i2s.setBCLK(I2S_BCK_IO)) return false;
+  if (!i2s.setBCLK(I2S_BCK_IO)) return false; // LRCLK = BCLK + 1 = GPIO5
   if (!i2s.setDOUT(I2S_DO_IO)) return false;
+  if (!i2s.setMCLK(I2S_MCK_IO)) return false;
+  if (!i2s.setMCLKmult(256)) return false;     // ES8311 system clock = 256*Fs
   if (!i2s.setBitsPerSample(16)) return false;
   if (!i2s.setBuffers(4, 128, 0)) return false;
   if (!i2s.setFrequency(SAMPLE_RATE)) return false;
@@ -132,6 +126,7 @@ static void stopI2S() {
   pinMode(I2S_DO_IO, INPUT);
   pinMode(I2S_BCK_IO, INPUT);
   pinMode(I2S_WS_IO, INPUT);
+  pinMode(I2S_MCK_IO, INPUT);
   digitalWrite(PA, LOW);
   sdInvalidateMount();
 }
@@ -176,8 +171,6 @@ void audioBegin() {
   gOn = p.getBool("snd", true);
   p.end();
 
-  // L'ES8311 usa il BCLK come sorgente di clock: il PIO I2S deve quindi essere
-  // gia attivo quando scriviamo i registri del codec.
   if (!startI2S()) {
     Serial.println("I2S init fallito: audio disattivato");
     return;
@@ -188,9 +181,6 @@ void audioBegin() {
     return;
   }
   gReady = true;
-
-  // Jingle di avvio. La riproduzione chiude subito I2S e rende di nuovo
-  // disponibili i pin condivisi con la SD.
   sfxPlay(SFX_HATCH);
 }
 
@@ -205,16 +195,14 @@ void sfxPlay(uint8_t id) {
   delay(8);
 
   const SfxDef &d = SFX[id];
-  for (uint8_t i = 0; i < d.len && gOn && !gSleeping; ++i) {
+  for (uint8_t i = 0; i < d.len && gOn && !gSleeping; ++i)
     playTone(d.n[i].f, d.n[i].ms);
-  }
   stopI2S();
 }
 
 void audioSetEnabled(bool on) {
   gOn = on;
   if (!on) stopI2S();
-
   Preferences p;
   p.begin("tamapoke", false);
   p.putBool("snd", on);
