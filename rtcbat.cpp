@@ -1,97 +1,96 @@
 #include "rtcbat.h"
-#include "pin_config.h"  // define XPOWERS_CHIP_AXP2101
+#include "pin_config.h"
 #include <Wire.h>
 #include <time.h>
-#include <SensorPCF85063.hpp>
-#include <XPowersLib.h>
 
-static SensorPCF85063 rtc;
-static XPowersPMU pmu;
+// PCF85063A
+static constexpr uint8_t RTC_ADDR = 0x51;
 static bool rtcOk = false;
 static bool pmuOk = false;
 
+static uint8_t bcdToDec(uint8_t v) { return (v >> 4) * 10 + (v & 0x0F); }
+static uint8_t decToBcd(uint8_t v) { return ((v / 10) << 4) | (v % 10); }
+
+static bool rtcRead(uint8_t reg, uint8_t *data, size_t n) {
+  Wire1.beginTransmission(RTC_ADDR); Wire1.write(reg); if (Wire1.endTransmission(false) != 0) return false;
+  if (Wire1.requestFrom(RTC_ADDR, (uint8_t)n) != (int)n) return false;
+  for (size_t i = 0; i < n; ++i) data[i] = Wire1.read();
+  return true;
+}
+static bool rtcWrite(uint8_t reg, const uint8_t *data, size_t n) {
+  Wire1.beginTransmission(RTC_ADDR); Wire1.write(reg);
+  for (size_t i = 0; i < n; ++i) Wire1.write(data[i]);
+  return Wire1.endTransmission() == 0;
+}
+
 bool rtcBegin() {
-  rtcOk = rtc.begin(Wire, IIC_SDA, IIC_SCL);
-  if (!rtcOk) Serial.println("PCF85063 no detectado");
+  uint8_t v = 0;
+  rtcOk = rtcRead(0x02, &v, 1);
+  if (!rtcOk) Serial.println("PCF85063 non rilevato");
   return rtcOk;
 }
 
 uint32_t rtcEpoch() {
   if (!rtcOk) return 0;
-  RTC_DateTime t = rtc.getDateTime();
-  if (t.getYear() < 2025 || t.getYear() > 2120) return 0;  // sin hora valida
-  struct tm tmv = {};
-  tmv.tm_year = t.getYear() - 1900;
-  tmv.tm_mon = t.getMonth() - 1;
-  tmv.tm_mday = t.getDay();
-  tmv.tm_hour = t.getHour();
-  tmv.tm_min = t.getMinute();
-  tmv.tm_sec = t.getSecond();
-  time_t e = mktime(&tmv);  // TZ por defecto = UTC, consistente con gmtime_r
-  return e > 0 ? (uint32_t)e : 0;
+  uint8_t d[7] = {};
+  if (!rtcRead(0x04, d, sizeof(d))) return 0;
+  if (d[0] & 0x80) return 0;
+  tm t = {};
+  t.tm_sec = bcdToDec(d[0] & 0x7F);
+  t.tm_min = bcdToDec(d[1] & 0x7F);
+  t.tm_hour = bcdToDec(d[2] & 0x3F);
+  t.tm_mday = bcdToDec(d[3] & 0x3F);
+  t.tm_mon = bcdToDec(d[5] & 0x1F) - 1;
+  t.tm_year = 2000 + bcdToDec(d[6]) - 1900;
+  time_t e = mktime(&t);
+  if (e <= 0 || t.tm_year + 1900 < 2025 || t.tm_year + 1900 > 2120) return 0;
+  return (uint32_t)e;
 }
 
-void rtcSetEpoch(uint32_t e) {
+void rtcSetEpoch(uint32_t epoch) {
   if (!rtcOk) return;
-  time_t tt = e;
-  struct tm tmv;
-  gmtime_r(&tt, &tmv);
-  rtc.setDateTime(RTC_DateTime(tmv.tm_year + 1900, tmv.tm_mon + 1, tmv.tm_mday,
-                               tmv.tm_hour, tmv.tm_min, tmv.tm_sec));
+  time_t tt = (time_t)epoch; tm *t = gmtime(&tt); if (!t) return;
+  uint8_t d[7] = {
+    decToBcd(t->tm_sec), decToBcd(t->tm_min), decToBcd(t->tm_hour),
+    decToBcd((t->tm_wday == 0) ? 7 : t->tm_wday), decToBcd(t->tm_mday),
+    decToBcd(t->tm_mon + 1), decToBcd((t->tm_year + 1900) - 2000)
+  };
+  rtcWrite(0x04, d, sizeof(d));
+}
+
+static uint8_t axpRead(uint8_t reg) {
+  Wire1.beginTransmission(0x34); Wire1.write(reg); if (Wire1.endTransmission(false) != 0) return 0;
+  if (Wire1.requestFrom((uint8_t)0x34, (uint8_t)1) != 1) return 0;
+  return Wire1.read();
+}
+static void axpWrite(uint8_t reg, uint8_t v) {
+  Wire1.beginTransmission(0x34); Wire1.write(reg); Wire1.write(v); Wire1.endTransmission();
 }
 
 bool batBegin() {
-  pmuOk = pmu.begin(Wire, AXP2101_SLAVE_ADDRESS, IIC_SDA, IIC_SCL);
-  if (!pmuOk) Serial.println("AXP2101 no detectado");
+  pmuOk = (axpRead(0x03) == 0x4A);
+  if (!pmuOk) Serial.println("AXP2101 non rilevato");
   return pmuOk;
 }
+void pmuEnablePanel() { /* BLDO1 è già uscito dal reset sulla board; non forziamo registri proprietari. */ }
 
-// Enciende la alimentacion de la AMOLED. En la Waveshare 1.75 el panel (OLED VDD)
-// cuelga del rail BLDO1 a 3.3V del AXP2101. El firmware daba por hecho que estaba
-// encendido; si el PMU se resetea (drenaje total), BLDO1 queda OFF y la pantalla
-// se ve negra aunque el resto funcione. Hay que llamarla ANTES de gfx->begin().
-void pmuEnablePanel() {
-  if (!pmu.begin(Wire, AXP2101_SLAVE_ADDRESS, IIC_SDA, IIC_SCL)) {
-    Serial.println("AXP2101 no detectado (pmuEnablePanel)");
-    return;
-  }
-  pmu.setBLDO1Voltage(3300);   // OLED VDD
-  pmu.enableBLDO1();
-}
-
-// el estado de energia (I2C) se cachea ~2 s: leerlo en cada frame del loop
-// metia trafico I2C inutil y podia oscilar (parpadeo de brillo)
 static uint32_t powerCacheT = 0;
-static int cachedPct = -1;
+static int cachedPct = -1, cachedMv = 0;
 static bool cachedCharging = false, cachedUsb = true;
-
 static void refreshPower() {
-  uint32_t now = millis();
-  if (powerCacheT && now - powerCacheT < 2000) return;
-  powerCacheT = now ? now : 1;
-  if (!pmuOk) { cachedPct = -1; cachedCharging = false; cachedUsb = true; return; }
-  cachedPct = pmu.isBatteryConnect() ? pmu.getBatteryPercent() : -1;
-  cachedCharging = pmu.isCharging();
-  cachedUsb = pmu.isVbusIn();
+  uint32_t now = millis(); if (powerCacheT && now - powerCacheT < 2000) return; powerCacheT = now ? now : 1;
+  if (!pmuOk) { cachedPct = -1; cachedMv = 0; cachedCharging = false; cachedUsb = true; return; }
+  uint8_t s1 = axpRead(0x00), s2 = axpRead(0x01);
+  cachedCharging = ((s2 >> 5) & 0x03) == 1;
+  cachedUsb = ((s1 >> 5) & 1) != 0;
+  bool batt = ((s1 >> 3) & 1) != 0;
+  cachedPct = batt ? axpRead(0xA4) : -1;
+  uint16_t raw = ((uint16_t)axpRead(0x34) << 4) | (axpRead(0x35) & 0x0F);
+  cachedMv = batt ? (int)((raw * 1.7f)) : 0;
 }
-
 int batPercent() { refreshPower(); return cachedPct; }
 bool batCharging() { refreshPower(); return cachedCharging; }
-int batMillivolts() { return pmuOk ? (int)pmu.getBattVoltage() : 0; }
+int batMillivolts() { refreshPower(); return cachedMv; }
 bool usbPresent() { refreshPower(); return cachedUsb; }
-
-void pwrSetup() {
-  if (!pmuOk) return;
-  pmu.setPowerKeyPressOffTime(XPOWERS_POWEROFF_4S);
-  pmu.disableIRQ(XPOWERS_AXP2101_ALL_IRQ);
-  pmu.enableIRQ(XPOWERS_AXP2101_PKEY_SHORT_IRQ);
-  pmu.clearIrqStatus();
-}
-
-bool pwrShortPressed() {
-  if (!pmuOk) return false;
-  pmu.getIrqStatus();
-  bool hit = pmu.isPekeyShortPressIrq();
-  if (hit) pmu.clearIrqStatus();
-  return hit;
-}
+void pwrSetup() {}
+bool pwrShortPressed() { return false; }
