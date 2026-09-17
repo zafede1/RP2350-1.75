@@ -40,24 +40,4 @@
 #define IRAM_ATTR
 #endif
 
-class RP2350WireCompat {
-public:
-  explicit RP2350WireCompat(TwoWire &impl) : impl_(impl) {}
-  void begin(int sda, int scl) { impl_.setSDA(sda); impl_.setSCL(scl); impl_.begin(); }
-  void setTimeOut(uint32_t ms) { impl_.setTimeout(ms); }
-  void beginTransmission(uint8_t addr) { impl_.beginTransmission(addr); }
-  uint8_t endTransmission() { return impl_.endTransmission(); }
-  uint8_t endTransmission(bool stopBit) { return impl_.endTransmission(stopBit); }
-  size_t requestFrom(uint8_t addr, size_t len) { return impl_.requestFrom(addr, len); }
-  size_t requestFrom(uint8_t addr, size_t len, bool stopBit) { return impl_.requestFrom(addr, len, stopBit); }
-  size_t write(uint8_t b) { return impl_.write(b); }
-  int available() { return impl_.available(); }
-  int read() { return impl_.read(); }
-  operator TwoWire &() { return impl_; }
-private:
-  TwoWire &impl_;
-};
-static RP2350WireCompat rp2350Wire(::Wire1);
-#define Wire rp2350Wire
-
 #endif
