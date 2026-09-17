@@ -1,6 +1,7 @@
 #include "sdmon.h"
 #include "pin_config.h"
 #include <SD.h>
+#include <SDFS.h>
 #include <string.h>
 
 bool sdReady = false;
@@ -186,7 +187,7 @@ bool sdSerialCommand(const String &line) {
   }
   if (line == "SDINFO") {
     FSInfo info{};
-    if (SD.info(info)) {
+    if (SDFS.info(info)) {
       Serial.printf("sd=1 size=%llu used=%llu\n", (unsigned long long)info.totalBytes, (unsigned long long)info.usedBytes);
       Serial.println("DONE");
     } else Serial.println("ERR");
