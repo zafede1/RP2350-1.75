@@ -11,7 +11,7 @@
 
 #include <Arduino.h>
 #include <Wire.h>
-#include "Arduino_GFX_Library.h"
+#include "tama_gfx.h"
 #include "TouchDrvCSTXXX.hpp"
 #include "U8g2lib.h"  // font CJK compatibility shim for RP2350
 #include "pin_config.h"
@@ -192,7 +192,7 @@ void setup() {
   // QSPI a 80MHz (por defecto 40): el flush del framebuffer es el cuello de
   // botella del fps (~56ms a 40MHz). Si el panel mostrara basura, bajar a 40M.
   if (!gfx->begin(80000000)) Serial.println("gfx->begin() fallo");
-  panel->setBrightness(180);
+  gfx->setBrightness(180);
   applyLangFont();  // fuente del idioma guardado (clasica salvo CJK)
 
   touch.setPins(TP_RESET, TP_INT);
@@ -321,7 +321,7 @@ void loop() {
   if (now - lastHealth > 300000) {
     lastHealth = now;
     Serial.printf("HEALTH up=%lus heap=%u min=%u bat=%d%% mv=%d chg=%d usb=%d dim=%u off=%d\n",
-                  (unsigned long)(now / 1000), ESP.getFreeHeap(), ESP.getMinFreeHeap(),
+                  (unsigned long)(now / 1000), rp2040.getFreeHeap(), rp2040.getFreeHeap(),
                   batPercent(), batMillivolts(), batCharging() ? 1 : 0,
                   usbPresent() ? 1 : 0, dimStage, screenOff ? 1 : 0);
   }
