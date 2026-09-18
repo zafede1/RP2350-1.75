@@ -25,6 +25,7 @@ static bool ensureSdMounted() {
 bool PmdMon::load(uint8_t dexNum, bool shiny) {
   unload();
   if (!ensureSdMounted()) return false;
+
   char path[28];
   snprintf(path, sizeof(path), "/mons/p%s%03u.bin", shiny ? "s" : "", dexNum);
   File f = SD.open(path, FILE_READ);
@@ -35,63 +36,186 @@ bool PmdMon::load(uint8_t dexNum, bool shiny) {
   if (!f) return false;
 
   uint32_t size = f.size();
-  if (size < 11 || size > SPRITE_RAM_BUDGET || spriteRamHeld + size > SPRITE_RAM_BUDGET) {
+  if (size < 11 || size > SD_UPLOAD_LIMIT) {
     f.close();
     return false;
   }
-  blob = (uint8_t *)malloc(size);
-  if (!blob) { f.close(); return false; }
-  blobSize = size;
-  spriteRamHeld += size;
-  if (f.read(blob, size) != (int)size || memcmp(blob, "TPK2", 4) != 0) {
-    f.close(); unload(); return false;
+
+  uint8_t magic[4] = {};
+  uint8_t nActs = 0;
+  uint16_t pc = 0;
+  if (!readExact(f, magic, 4) || memcmp(magic, "TPK2", 4) != 0 ||
+      !readExact(f, &nActs, 1) || !readExact(f, &pc, 2) ||
+      nActs == 0 || nActs > PMD_NACTS || pc > 256) {
+    f.close();
+    return false;
   }
-  f.close();
 
-  uint8_t nActs = blob[4];
-  if (nActs > PMD_NACTS) { unload(); return false; }
-  memcpy(&palCount, blob + 5, 2);
-  if (palCount > 256 || (uint32_t)7 + palCount * 2 > size) { unload(); return false; }
-  memcpy(pal, blob + 7, palCount * 2);
+  palCount = pc;
+  if ((uint32_t)7 + (uint32_t)palCount * 2 > size ||
+      !readExact(f, pal, (size_t)palCount * 2)) {
+    f.close();
+    unload();
+    return false;
+  }
 
-  const uint8_t *p = blob + 7 + palCount * 2;
-  const uint8_t *end = blob + size;
-  for (uint8_t i = 0; i < nActs && p + 4 <= end; ++i) {
-    uint8_t id = p[0], w = p[1], h = p[2], nf = p[3];
-    p += 4;
-    if (id >= PMD_NACTS || nf == 0 || nf > 24 || w == 0 || h == 0) { unload(); return false; }
-    uint32_t bytes = (uint32_t)nf * 2 + (uint32_t)w * h * nf;
-    if ((size_t)(end - p) < bytes) { unload(); return false; }
-    PmdAct &a = acts[id];
-    a.w = w; a.h = h; a.frames = nf;
-    for (uint8_t k = 0; k < nf; ++k) {
-      a.ms[k] = p[0] | (p[1] << 8);
-      if (!a.ms[k]) a.ms[k] = 100;
-      p += 2;
+  memset(acts, 0, sizeof(acts));
+  uint32_t maxFrameBytes = 0;
+
+  // Prima passata: leggi solo i metadati e salva gli offset dei pixel.
+  for (uint8_t i = 0; i < nActs; ++i) {
+    uint8_t hdr[4] = {};
+    if (!readExact(f, hdr, sizeof(hdr))) {
+      f.close();
+      unload();
+      return false;
     }
-    a.data = p;
-    p += (uint32_t)w * h * nf;
+
+    uint8_t id = hdr[0], w = hdr[1], h = hdr[2], nf = hdr[3];
+    if (id >= PMD_NACTS || nf == 0 || nf > 24 || w == 0 || h == 0) {
+      f.close();
+      unload();
+      return false;
+    }
+
+    PmdAct &a = acts[id];
+    a.w = w;
+    a.h = h;
+    a.frames = nf;
+    for (uint8_t k = 0; k < nf; ++k) {
+      uint8_t ms[2] = {};
+      if (!readExact(f, ms, 2)) {
+        f.close();
+        unload();
+        return false;
+      }
+      a.ms[k] = (uint16_t)ms[0] | ((uint16_t)ms[1] << 8);
+      if (!a.ms[k]) a.ms[k] = 100;
+    }
+
+    a.dataOffset = (uint32_t)f.position();
+    uint32_t bytes = (uint32_t)w * h * nf;
+    uint32_t pos = (uint32_t)f.position();
+    if (bytes > size - pos) {
+      f.close();
+      unload();
+      return false;
+    }
+    if ((uint32_t)w * h > maxFrameBytes) maxFrameBytes = (uint32_t)w * h;
+
+    if (!f.seek(pos + bytes, SeekSet)) {
+      f.close();
+      unload();
+      return false;
+    }
+  }
+
+  // Un frame alla volta in SRAM: non serve PSRAM e non serve tenere il file
+  // PMD intero in memoria. Il budget vale solo per il frame piu grande.
+  if (!maxFrameBytes || maxFrameBytes > SPRITE_RAM_BUDGET ||
+      spriteRamHeld + maxFrameBytes > SPRITE_RAM_BUDGET) {
+    f.close();
+    unload();
+    return false;
+  }
+
+  frameBuf = (uint8_t *)malloc(maxFrameBytes);
+  if (!frameBuf) {
+    f.close();
+    unload();
+    return false;
+  }
+  frameBufSize = maxFrameBytes;
+  spriteRamHeld += frameBufSize;
+  cachedAct = 0xFF;
+  cachedFrame = 0xFF;
+
+  strncpy(filePath, path, sizeof(filePath) - 1);
+  filePath[sizeof(filePath) - 1] = 0;
+
+  // Seconda passata: calcola la base piu bassa con contenuto, come nel
+  // formato originale, senza conservare i pixel di tutte le animazioni.
+  for (uint8_t id = 0; id < PMD_NACTS; ++id) {
+    PmdAct &a = acts[id];
+    if (!a.frames) continue;
     uint8_t base = 1;
-    for (uint8_t fr = 0; fr < nf; ++fr) {
-      const uint8_t *frame = a.data + (uint32_t)fr * w * h;
-      for (int r = h - 1; r >= 0; --r) {
+    const uint32_t frameBytes = (uint32_t)a.w * a.h;
+    for (uint8_t fr = 0; fr < a.frames; ++fr) {
+      uint32_t off = a.dataOffset + (uint32_t)fr * frameBytes;
+      if (!f.seek(off, SeekSet) || f.read(frameBuf, frameBytes) != (int)frameBytes) {
+        f.close();
+        unload();
+        return false;
+      }
+      for (int r = a.h - 1; r >= 0; --r) {
         bool any = false;
-        for (uint8_t col = 0; col < w; ++col) {
-          if (frame[r * w + col] != 0xFF) { any = true; break; }
+        for (uint8_t col = 0; col < a.w; ++col) {
+          if (frameBuf[r * a.w + col] != 0xFF) {
+            any = true;
+            break;
+          }
         }
-        if (any) { if ((uint8_t)(r + 1) > base) base = r + 1; break; }
+        if (any) {
+          if ((uint8_t)(r + 1) > base) base = (uint8_t)(r + 1);
+          break;
+        }
       }
     }
     a.base = base;
   }
+
+  f.close();
   loaded = true;
   return true;
 }
 
 void PmdMon::unload() {
-  if (blob) { free(blob); if (blobSize <= spriteRamHeld) spriteRamHeld -= blobSize; }
-  blob = nullptr; blobSize = 0; loaded = false; palCount = 0;
+  if (frameBuf) {
+    free(frameBuf);
+    if (frameBufSize <= spriteRamHeld) spriteRamHeld -= frameBufSize;
+  }
+  frameBuf = nullptr;
+  frameBufSize = 0;
+  loaded = false;
+  palCount = 0;
+  cachedAct = 0xFF;
+  cachedFrame = 0xFF;
+  filePath[0] = 0;
   for (uint8_t i = 0; i < PMD_NACTS; ++i) acts[i] = PmdAct{};
+}
+
+const uint8_t *PmdMon::frameData(uint8_t actId, uint8_t frame) {
+  if (!loaded || !frameBuf || actId >= PMD_NACTS || !acts[actId].frames ||
+      frame >= acts[actId].frames) return nullptr;
+
+  if (cachedAct == actId && cachedFrame == frame) return frameBuf;
+
+  PmdAct &a = acts[actId];
+  const uint32_t frameBytes = (uint32_t)a.w * a.h;
+  if (frameBytes > frameBufSize) return nullptr;
+
+  if (!ensureSdMounted()) {
+    cachedAct = cachedFrame = 0xFF;
+    return nullptr;
+  }
+
+  File f = SD.open(filePath, FILE_READ);
+  if (!f) {
+    cachedAct = cachedFrame = 0xFF;
+    return nullptr;
+  }
+
+  uint32_t off = a.dataOffset + (uint32_t)frame * frameBytes;
+  bool ok = f.seek(off, SeekSet) && f.read(frameBuf, frameBytes) == (int)frameBytes;
+  f.close();
+  if (!ok) {
+    cachedAct = cachedFrame = 0xFF;
+    return nullptr;
+  }
+
+  cachedAct = actId;
+  cachedFrame = frame;
+  return frameBuf;
 }
 
 bool SdMon::load(uint8_t dexNum, bool shiny) {
@@ -130,7 +254,7 @@ void SdThumbs::unload() {
 bool SdThumbs::load() {
   unload(); if (!ensureSdMounted()) return false;
   File f = SD.open("/mons/thumbs.bin", FILE_READ); if (!f) return false;
-  uint32_t sz = f.size(); if (sz < 10 || sz > 64UL * 1024UL) { f.close(); return false; }
+  uint32_t sz = f.size(); if (sz < 10 || sz > 256UL * 1024UL) { f.close(); return false; }
   uint8_t hdr[6] = {};
   if (!readExact(f, hdr, sizeof(hdr)) || memcmp(hdr, "TPTH", 4) != 0) { f.close(); return false; }
   count = (uint16_t)hdr[4] | ((uint16_t)hdr[5] << 8);
