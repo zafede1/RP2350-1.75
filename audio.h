@@ -22,3 +22,6 @@ void sfxPlay(uint8_t id);
 void audioSetEnabled(bool on);
 bool audioEnabled();
 void audioSetSleeping(bool sleeping);
+
+// Ferma temporaneamente l'I2S e libera i GPIO condivisi con la microSD.
+void audioPrepareForSd();
