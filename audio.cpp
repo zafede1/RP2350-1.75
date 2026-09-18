@@ -128,7 +128,6 @@ static void stopI2S() {
   pinMode(I2S_WS_IO, INPUT);
   pinMode(I2S_MCK_IO, INPUT);
   digitalWrite(PA, LOW);
-  sdInvalidateMount();
 }
 
 static void playTone(uint16_t f, uint16_t ms) {
@@ -197,12 +196,6 @@ void sfxPlay(uint8_t id) {
   const SfxDef &d = SFX[id];
   for (uint8_t i = 0; i < d.len && gOn && !gSleeping; ++i)
     playTone(d.n[i].f, d.n[i].ms);
-  stopI2S();
-}
-
-void audioPrepareForSd() {
-  // SDIO and I2S share GPIO1/GPIO3 on the Waveshare board.
-  // Stop the synchronous SFX stream before mounting/opening files.
   stopI2S();
 }
 
