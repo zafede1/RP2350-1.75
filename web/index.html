@@ -110,13 +110,15 @@ document.getElementById('connect').onclick=async()=>{
     log('Connected.');
   }catch(e){log('Connect failed: '+e.message)}
 };
-const BUNDLE_URLS = [
-  new URL('sprites.pak', document.baseURI).href,
-  'https://zafede1.github.io/RP2350-1.75/web/sprites.pak',
-  'https://raw.githubusercontent.com/zafede1/RP2350-1.75/main/web/sprites.pak',
-  'https://cdn.jsdelivr.net/gh/zafede1/RP2350-1.75@main/web/sprites.pak',
-  'https://raw.githubusercontent.com/zafede1/RP2350-1.75/rp2350-port/web/sprites.pak'
-];
+const BUNDLE_URLS = location.protocol === 'file:'
+  ? [
+      'https://zafede1.github.io/RP2350-1.75/web/sprites.pak',
+      'https://raw.githubusercontent.com/zafede1/RP2350-1.75/main/web/sprites.pak'
+    ]
+  : [
+      new URL('sprites.pak', document.baseURI).href,
+      'https://zafede1.github.io/RP2350-1.75/web/sprites.pak'
+    ];
 
 async function fetchSpriteBundle(){
   const errors=[];
