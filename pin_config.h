@@ -25,11 +25,12 @@
 #define I2S_MCK_IO 3
 #define PA 0
 
-// SDIO PIO pins.
-#define SDMMC_CLK 2
-#define SDMMC_CMD 1
-#define SDMMC_DATA 3
-#define SDMMC_CS 41
+// microSD on the RP2350 board (Waveshare official wiring): SPI0.
+// NOTE: GPIO 1/2/3/41 are the ESP32-S3 board mapping and must not be used here.
+#define SD_SPI_SCK 18
+#define SD_SPI_MOSI 19
+#define SD_SPI_MISO 20
+#define SD_SPI_CS 21
 
 #ifndef RGB565_BLACK
 #define RGB565_BLACK 0x0000
