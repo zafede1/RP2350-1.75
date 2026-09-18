@@ -1,8 +1,8 @@
 #include "sdmon.h"
-#include "audio.h"
 #include "pin_config.h"
 #include <SD.h>
 #include <SDFS.h>
+#include <SPI.h>
 #include <string.h>
 
 bool sdReady = false;
@@ -285,71 +285,158 @@ const uint8_t *SdThumbs::get(int16_t dex) const {
 
 void sdInvalidateMount() { sdMounted = false; sdReady = false; }
 
+static bool mountSdAtSpeed(uint32_t speed) {
+  // Wiring ufficiale Waveshare RP2350-Touch-AMOLED-1.75:
+  // SPI0 SCK=18, MOSI=19, MISO=20, CS=21.
+  // La precedente configurazione 2/1/3/41 apparteneva alla variante ESP32-S3.
+  SD.end(false);
+  SPI.end();
+
+  if (!SPI.setSCK(SD_SPI_SCK) ||
+      !SPI.setTX(SD_SPI_MOSI) ||
+      !SPI.setRX(SD_SPI_MISO) ||
+      !SPI.setCS(SD_SPI_CS)) {
+    return false;
+  }
+
+  SPI.begin();
+  return SD.begin(SD_SPI_CS, speed, SPI);
+}
+
 bool sdBegin() {
-  // Audio and SD share GPIO1/GPIO3 on this board. stopI2S() changes those pins,
-  // so the filesystem must be fully unmounted before reinitializing SDIO.
-  SD.end();
+  sdReady = false;
+  sdMounted = false;
 
-  SDFSConfig cfg(SDMMC_CLK, SDMMC_CMD, SDMMC_DATA);
-  // Match the original project: prepare a fresh/unformatted card automatically.
-  cfg.setAutoFormat(true);
-  SDFS.setConfig(cfg);
+  // 5 MHz e' la velocita usata anche dall'esempio ufficiale Waveshare.
+  // Se una scheda e' piu sensibile, ritenta a 1 MHz.
+  if (!mountSdAtSpeed(SD_SCK_MHZ(5))) {
+    if (!mountSdAtSpeed(SD_SCK_MHZ(1))) {
+      Serial.println("SD: montaggio fallito (SPI0 18/19/20, CS 21)");
+      return false;
+    }
+  }
 
-  sdReady = SDFS.begin();
-  sdMounted = sdReady;
-  if (sdReady) SD.mkdir("/mons");
-  return sdReady;
+  sdReady = true;
+  sdMounted = true;
+  if (!SD.exists("/mons")) SD.mkdir("/mons");
+
+  FSInfo info{};
+  if (SDFS.info(info)) {
+    Serial.printf("SD: pronta, %llu MB totali, %llu MB usati\n",
+                  (unsigned long long)(info.totalBytes / (1024ULL * 1024ULL)),
+                  (unsigned long long)(info.usedBytes / (1024ULL * 1024ULL)));
+  } else {
+    Serial.println("SD: pronta");
+  }
+  return true;
 }
 
 bool sdSerialCommand(const String &line) {
-  // Before any SD filesystem command, release the I2S pins shared with SDIO.
-  if (line.startsWith("PUT ") || line == "LS" || line == "SDINFO") {
-    audioPrepareForSd();
-    sdMounted = false;
-    sdReady = false;
+  if (!ensureSdMounted()) {
+    Serial.println("ERR SD_MOUNT");
+    return true;
   }
-  if (!ensureSdMounted()) { Serial.println("ERR"); return true; }
+
   if (line.startsWith("PUT ")) {
     int sp = line.lastIndexOf(' ');
-    if (sp <= 4) { Serial.println("ERR"); return true; }
-    String path = line.substring(4, sp); uint32_t size = line.substring(sp + 1).toInt();
-    if (size == 0 || size > SD_UPLOAD_LIMIT || !path.startsWith("mons/") || path.indexOf("..") >= 0) { Serial.println("ERR"); return true; }
+    if (sp <= 4) {
+      Serial.println("ERR PUT_ARGS");
+      return true;
+    }
+
+    String path = line.substring(4, sp);
+    uint32_t size = line.substring(sp + 1).toInt();
+    if (size == 0 || size > SD_UPLOAD_LIMIT ||
+        !path.startsWith("mons/") || path.indexOf("..") >= 0) {
+      Serial.println("ERR PUT_ARGS");
+      return true;
+    }
+
     if (!path.startsWith("/")) path = "/" + path;
-    if (SD.exists(path)) SD.remove(path);
-    File f = SD.open(path, FILE_WRITE); if (!f) { Serial.println("ERR"); return true; }
+    if (SD.exists(path) && !SD.remove(path)) {
+      Serial.println("ERR REMOVE");
+      return true;
+    }
+
+    File f = SD.open(path, FILE_WRITE);
+    if (!f) {
+      Serial.println("ERR OPEN");
+      return true;
+    }
+
     Serial.println("OK");
-    static uint8_t buf[2048]; uint32_t left = size; Serial.setTimeout(1000);
+    static uint8_t buf[2048];
+    uint32_t left = size;
+    const char *err = nullptr;
+    Serial.setTimeout(5000);
+
     while (left) {
       const size_t want = left > sizeof(buf) ? sizeof(buf) : left;
       size_t got = 0;
-      // USB CDC puo spezzare un write in piu letture: l'ACK arriva solo dopo
-      // aver raccolto esattamente il blocco richiesto dal protocollo.
+
+      // USB CDC puo consegnare un blocco in piu letture.
       while (got < want) {
         size_t n = Serial.readBytes(buf + got, want - got);
-        if (!n) { left = 1; break; }
+        if (!n) {
+          err = "ERR USB_TIMEOUT";
+          break;
+        }
         got += n;
       }
-      if (left != 1 && f.write(buf, want) == want) {
-        left -= want;
-        Serial.println("#");
-      } else {
-        left = 1;
+      if (err) break;
+
+      if (f.write(buf, want) != want) {
+        err = "ERR SD_WRITE";
+        break;
       }
+
+      left -= want;
+      Serial.println("#");
     }
-    f.close(); Serial.setTimeout(1000); sdDirty = (left == 0); Serial.println(sdDirty ? "DONE" : "ERR"); return true;
+
+    f.flush();
+    f.close();
+    Serial.setTimeout(1000);
+
+    if (!err && left == 0) {
+      sdDirty = true;
+      Serial.println("DONE");
+    } else {
+      sdDirty = false;
+      if (SD.exists(path)) SD.remove(path);
+      Serial.println(err ? err : "ERR TRANSFER");
+    }
+    return true;
   }
+
   if (line == "SDINFO") {
     FSInfo info{};
     if (SDFS.info(info)) {
-      Serial.printf("sd=1 size=%llu used=%llu\n", (unsigned long long)info.totalBytes, (unsigned long long)info.usedBytes);
+      Serial.printf("sd=1 size=%llu used=%llu\n",
+                    (unsigned long long)info.totalBytes,
+                    (unsigned long long)info.usedBytes);
       Serial.println("DONE");
-    } else Serial.println("ERR");
+    } else {
+      Serial.println("ERR SD_INFO");
+    }
     return true;
   }
+
   if (line == "LS") {
     File dir = SD.open("/mons");
-    if (dir) { File e; while ((e = dir.openNextFile())) { Serial.printf("%s %u\n", e.name(), (uint32_t)e.size()); e.close(); } dir.close(); }
-    Serial.println("DONE"); return true;
+    if (!dir) {
+      Serial.println("ERR OPEN_DIR");
+      return true;
+    }
+    File e;
+    while ((e = dir.openNextFile())) {
+      Serial.printf("%s %u\n", e.name(), (uint32_t)e.size());
+      e.close();
+    }
+    dir.close();
+    Serial.println("DONE");
+    return true;
   }
+
   return false;
 }
