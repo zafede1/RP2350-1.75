@@ -36,7 +36,7 @@ button{font:inherit;font-weight:500;padding:.6rem 1.2rem;border-radius:10px;bord
   <p>Keep the board running normally, connect its USB serial port, then press <b>Connect board</b>. The page sends the same <code>PUT</code> protocol used by the firmware tools.</p>
   <div class="row">
     <button id="connect">🔌 Connect board</button>
-    <button id="auto" disabled>⬇️ Load all sprites</button>
+    <button id="auto" disabled>⬇️ Load all sprites + Pokédex</button>
     <label style="cursor:pointer;text-decoration:underline">pick <code>.bin</code> files<input id="files" type="file" accept=".bin" multiple disabled hidden></label>
   </div>
   <p class="note">Do not use the pico⚡flash page and the serial uploader at the same time: only one browser program should own the USB connection. Restart the board after the transfer.</p>
@@ -105,9 +105,29 @@ document.getElementById('connect').onclick=async()=>{
     log('Connected.');
   }catch(e){log('Connect failed: '+e.message)}
 };
+const BUNDLE_URLS=[
+  new URL('sprites.pak',document.baseURI).href,
+  'https://raw.githubusercontent.com/zafede1/RP2350-1.75/main/web/sprites.pak',
+  'https://raw.githubusercontent.com/zafede1/RP2350-1.75/rp2350-port/web/sprites.pak'
+];
+async function fetchSpriteBundle(){
+  const errors=[];
+  for(const url of BUNDLE_URLS){
+    try{
+      log('Fetching sprite bundle from '+url);
+      const r=await fetch(url,{cache:'no-store',mode:'cors'});
+      if(!r.ok){errors.push('HTTP '+r.status+' @ '+url);continue}
+      const buf=await r.arrayBuffer();
+      const magic=new TextDecoder().decode(new Uint8Array(buf,0,4));
+      if(magic!=='TPAK'){errors.push('invalid TPAK @ '+url);continue}
+      return buf;
+    }catch(e){errors.push(e.message+' @ '+url)}
+  }
+  throw Error(errors.join(' | ')||'no bundle URL worked');
+}
 document.getElementById('auto').onclick=async()=>{
   document.getElementById('auto').disabled=true;log('Downloading sprites.pak (~42 MB)...');
-  try{const r=await fetch('sprites.pak',{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);const items=parsePak(await r.arrayBuffer());log(`${items.length} files. Sending...`);await sendAll(items)}
+  try{const items=parsePak(await fetchSpriteBundle());log(`${items.length} files. Sending...`);await sendAll(items)}
   catch(e){log('Sprite bundle failed: '+e.message)}finally{document.getElementById('auto').disabled=false}
 };
 document.getElementById('files').onchange=async ev=>{const items=[];for(const f of ev.target.files)items.push({name:'mons/'+f.name,data:new Uint8Array(await f.arrayBuffer())});log(`${items.length} selected. Sending...`);await sendAll(items)};
