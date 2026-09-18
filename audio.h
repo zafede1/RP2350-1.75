@@ -1,8 +1,7 @@
 #pragma once
 #include <stdint.h>
 
-// Efectos de sonido del juego. En RP2350 se reproducen de forma sincronica
-// durante unas pocas decenas de ms y despues liberan los pines compartidos con SD.
+// Effetti sonori del gioco. Su RP2350 vengono riprodotti in modo sincrono\n// per pochi millisecondi.
 enum Sfx : uint8_t {
   SFX_TAP = 0,
   SFX_EAT,
@@ -22,6 +21,3 @@ void sfxPlay(uint8_t id);
 void audioSetEnabled(bool on);
 bool audioEnabled();
 void audioSetSleeping(bool sleeping);
-
-// Ferma temporaneamente l'I2S e libera i GPIO condivisi con la microSD.
-void audioPrepareForSd();
