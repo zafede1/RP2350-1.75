@@ -301,11 +301,23 @@ bool sdSerialCommand(const String &line) {
     if (SD.exists(path)) SD.remove(path);
     File f = SD.open(path, FILE_WRITE); if (!f) { Serial.println("ERR"); return true; }
     Serial.println("OK");
-    static uint8_t buf[2048]; uint32_t left = size; Serial.setTimeout(10000);
+    static uint8_t buf[2048]; uint32_t left = size; Serial.setTimeout(1000);
     while (left) {
-      size_t want = left > sizeof(buf) ? sizeof(buf) : left; size_t n = Serial.readBytes(buf, want);
-      if (!n || f.write(buf, n) != n) { left = 1; break; }
-      left -= n; Serial.println("#");
+      const size_t want = left > sizeof(buf) ? sizeof(buf) : left;
+      size_t got = 0;
+      // USB CDC puo spezzare un write in piu letture: l'ACK arriva solo dopo
+      // aver raccolto esattamente il blocco richiesto dal protocollo.
+      while (got < want) {
+        size_t n = Serial.readBytes(buf + got, want - got);
+        if (!n) { left = 1; break; }
+        got += n;
+      }
+      if (left != 1 && f.write(buf, want) == want) {
+        left -= want;
+        Serial.println("#");
+      } else {
+        left = 1;
+      }
     }
     f.close(); Serial.setTimeout(1000); sdDirty = (left == 0); Serial.println(sdDirty ? "DONE" : "ERR"); return true;
   }
