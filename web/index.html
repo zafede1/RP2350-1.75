@@ -33,10 +33,10 @@ button{font:inherit;font-weight:500;padding:.6rem 1.2rem;border-radius:10px;bord
 
 <h2><span class="num">2</span>Load the sprites to microSD</h2>
 <div class="step">
-  <p>Keep the board running normally, connect its USB serial port, then press <b>Connect board</b>. The page sends the same <code>PUT</code> protocol used by the firmware tools.</p>
+  <p>Keep the board running normally, connect its USB serial port, then press <b>Connect board</b>. The page sends the same <code>PUT</code> protocol used by the firmware tools, including the Pokédex thumbnails.</p>
   <div class="row">
     <button id="connect">🔌 Connect board</button>
-    <button id="auto" disabled>⬇️ Load all sprites</button>
+    <button id="auto" disabled>⬇️ Load all sprites + Pokédex</button>
     <label style="cursor:pointer;text-decoration:underline">pick <code>.bin</code> files<input id="files" type="file" accept=".bin" multiple disabled hidden></label>
   </div>
   <p class="note">Do not use the pico⚡flash page and the serial uploader at the same time: only one browser program should own the USB connection. Restart the board after the transfer.</p>
