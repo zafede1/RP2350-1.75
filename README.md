@@ -13,6 +13,7 @@ A gen-1-Pokémon-inspired tamagotchi for the
 **Waveshare RP2350-Touch-AMOLED-1.75** (round 466×466 AMOLED, CO5300 driver
 over QSPI, CST9217 touch over I2C). Raise any of the 151, evolve it, train it
 and complete them all (shinies included).
+VIBECODED!
 
 > **Personal, non-commercial fan project.** Code is MIT; the sprites are from
 > PMD SpriteCollab (CC BY-NC, Pokémon © Nintendo/Game Freak), and the 3D case is
