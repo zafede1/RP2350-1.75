@@ -38,8 +38,9 @@ button{font:inherit;font-weight:500;padding:.6rem 1.2rem;border-radius:10px;bord
     <button id="connect">🔌 Connect board</button>
     <button id="auto" disabled>⬇️ Load all sprites + Pokédex</button>
     <label style="cursor:pointer;text-decoration:underline">pick <code>.bin</code> files<input id="files" type="file" accept=".bin" multiple disabled hidden></label>
+    <label id="pakPickLabel" style="cursor:pointer;text-decoration:underline">pick <code>sprites.pak</code><input id="pakfile" type="file" accept=".pak,application/octet-stream" disabled hidden></label>
   </div>
-  <p class="note">Do not use the pico⚡flash page and the serial uploader at the same time: only one browser program should own the USB connection. Restart the board after the transfer.</p>
+  <p class="note">Do not use the pico⚡flash page and the serial uploader at the same time: only one browser program should own the USB connection. Restart the board after the transfer. When opening this file directly with <code>file://</code>, Chrome cannot auto-read the local <code>sprites.pak</code>; use <b>pick sprites.pak</b> or serve the <code>web</code> folder over HTTP.</p>
   <div class="bar" id="bar"><div></div></div><pre id="log"></pre>
 </div>
 
@@ -101,41 +102,65 @@ document.getElementById('connect').onclick=async()=>{
   try{
     port=await navigator.serial.requestPort();await port.open({baudRate:115200});
     reader=port.readable.getReader();writer=port.writable.getWriter();lineBuf='';
-    document.getElementById('auto').disabled=false;document.getElementById('files').disabled=false;document.getElementById('connect').disabled=true;
+    document.getElementById('auto').disabled=false;document.getElementById('files').disabled=false;document.getElementById('pakfile').disabled=false;document.getElementById('connect').disabled=true;
     log('Connected.');
   }catch(e){log('Connect failed: '+e.message)}
 };
-const BUNDLE_URLS = location.protocol === 'file:'
-  ? [
-      'https://raw.githubusercontent.com/zafede1/RP2350-1.75/main/web/sprites.pak',
-      'https://cdn.jsdelivr.net/gh/zafede1/RP2350-1.75@main/web/sprites.pak',
-      'https://raw.githubusercontent.com/zafede1/RP2350-1.75/rp2350-port/web/sprites.pak'
-    ]
-  : [
-      new URL('sprites.pak', document.baseURI).href,
-      'https://raw.githubusercontent.com/zafede1/RP2350-1.75/main/web/sprites.pak',
-      'https://cdn.jsdelivr.net/gh/zafede1/RP2350-1.75@main/web/sprites.pak',
-      'https://raw.githubusercontent.com/zafede1/RP2350-1.75/rp2350-port/web/sprites.pak'
-    ];
+const BUNDLE_URLS = [
+  new URL('sprites.pak', document.baseURI).href,
+  'https://zafede1.github.io/RP2350-1.75/web/sprites.pak',
+  'https://raw.githubusercontent.com/zafede1/RP2350-1.75/main/web/sprites.pak',
+  'https://cdn.jsdelivr.net/gh/zafede1/RP2350-1.75@main/web/sprites.pak',
+  'https://raw.githubusercontent.com/zafede1/RP2350-1.75/rp2350-port/web/sprites.pak'
+];
+
 async function fetchSpriteBundle(){
   const errors=[];
   for(const url of BUNDLE_URLS){
+    if(url.startsWith('file:')) continue;
     try{
-      log('Fetching sprite bundle from '+url);
-      const r=await fetch(url,{cache:'no-store',mode:'cors'});
+      log('Fetching bundle: '+url);
+      const controller=new AbortController();
+      const timer=setTimeout(()=>controller.abort(),120000);
+      const r=await fetch(url,{cache:'no-store',mode:'cors',signal:controller.signal});
+      clearTimeout(timer);
       if(!r.ok){errors.push('HTTP '+r.status+' @ '+url);continue}
       const buf=await r.arrayBuffer();
+      if(buf.byteLength<6){errors.push('empty bundle @ '+url);continue}
       const magic=new TextDecoder().decode(new Uint8Array(buf,0,4));
       if(magic!=='TPAK'){errors.push('invalid TPAK @ '+url);continue}
+      log('Bundle downloaded: '+(buf.byteLength/1048576).toFixed(1)+' MB');
       return buf;
-    }catch(e){errors.push(e.message+' @ '+url)}
+    }catch(e){errors.push((e.name==='AbortError'?'timeout':e.message)+' @ '+url)}
   }
   throw Error(errors.join(' | ')||'no bundle URL worked');
 }
+async function sendPakBuffer(buf){
+  const items=parsePak(buf);
+  log(items.length+' files found in bundle. Sending...');
+  await sendAll(items);
+}
 document.getElementById('auto').onclick=async()=>{
-  document.getElementById('auto').disabled=true;log('Downloading sprites.pak (~42 MB)...');
-  try{const items=parsePak(await fetchSpriteBundle());log(`${items.length} files. Sending...`);await sendAll(items)}
+  if(location.protocol==='file:'){
+    log('Local file:// page: choose sprites.pak with the file picker.');
+    document.getElementById('pakfile').click();
+    return;
+  }
+  document.getElementById('auto').disabled=true;
+  log('Downloading sprites.pak (~42 MB)...');
+  try{await sendPakBuffer(await fetchSpriteBundle())}
   catch(e){log('Sprite bundle failed: '+e.message)}finally{document.getElementById('auto').disabled=false}
+};
+document.getElementById('pakfile').onchange=async ev=>{
+  const f=ev.target.files && ev.target.files[0];
+  if(!f)return;
+  log('Using local '+f.name+' ('+(f.size/1048576).toFixed(1)+' MB)...');
+  try{
+    await sendPakBuffer(await f.arrayBuffer());
+  }catch(e){
+    log('Local sprite bundle failed: '+e.message);
+  }
+  ev.target.value='';
 };
 document.getElementById('files').onchange=async ev=>{const items=[];for(const f of ev.target.files)items.push({name:'mons/'+f.name,data:new Uint8Array(await f.arrayBuffer())});log(`${items.length} selected. Sending...`);await sendAll(items)};
 if(!('serial' in navigator)){document.getElementById('connect').disabled=true;log('Web Serial is not available. Use Chrome/Edge on desktop.');}
