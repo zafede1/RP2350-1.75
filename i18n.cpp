@@ -1,6 +1,6 @@
 #include "i18n.h"
 #include "pet.h"        // MED_COUNT
-#include <Preferences.h>
+#include "Preferences.h"
 
 Lang gLang = LANG_DEFAULT;
 
