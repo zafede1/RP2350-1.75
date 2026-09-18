@@ -67,7 +67,7 @@ async function readLine(timeoutMs=8000){
 }
 async function waitFor(token,timeoutMs=8000){
   const deadline=Date.now()+timeoutMs;
-  while(Date.now()<deadline){const s=await readLine(deadline-Date.now());if(s===token)return true;if(s==='ERR'||s===null)return false}return false;
+  while(Date.now()<deadline){const s=await readLine(deadline-Date.now());if(s===token)return true;if((s&&s.startsWith('ERR'))||s===null){if(s)log(s);return false}}return false;
 }
 async function sendOne(name,data){
   log('Sending '+name+' ('+data.length+' bytes)...');
