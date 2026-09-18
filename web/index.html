@@ -40,7 +40,8 @@ button{font:inherit;font-weight:500;padding:.6rem 1.2rem;border-radius:10px;bord
     <label style="cursor:pointer;text-decoration:underline">pick <code>.bin</code> files<input id="files" type="file" accept=".bin" multiple disabled hidden></label>
     <label id="pakPickLabel" style="cursor:pointer;text-decoration:underline">pick <code>sprites.pak</code><input id="pakfile" type="file" accept=".pak,application/octet-stream" disabled hidden></label>
   </div>
-  <p class="note">Do not use the pico⚡flash page and the serial uploader at the same time: only one browser program should own the USB connection. Restart the board after the transfer. When opening this file directly with <code>file://</code>, Chrome cannot auto-read the local <code>sprites.pak</code>; use <b>pick sprites.pak</b> or serve the <code>web</code> folder over HTTP.</p>
+  <p class="note">Do not use the pico⚡flash page and the serial uploader at the same time: only one browser program should own the USB connection. Restart the board after the transfer.</p>
+  <p class="note" id="localHelp"><b>Opening this HTML from a folder (file://)?</b> Download <a href="https://github.com/zafede1/RP2350-1.75/raw/refs/heads/main/web/sprites.pak?download=1">sprites.pak</a> first, then press <b>pick sprites.pak</b>. This path does not use CORS.</p>
   <div class="bar" id="bar"><div></div></div><pre id="log"></pre>
 </div>
 
@@ -71,8 +72,8 @@ async function sendOne(name,data){
   log('Sending '+name+' ('+data.length+' bytes)...');
   await writer.write(enc.encode(`PUT ${name} ${data.length}\n`));
   if(!await waitFor('OK',15000)){log('  '+name+': no OK');return false}
-  for(let i=0;i<data.length;i+=2048){
-    await writer.write(data.slice(i,i+2048));
+  for(let i=0;i<data.length;i+=1024){
+    await writer.write(data.slice(i,i+1024));
     if(!await waitFor('#',15000)){log('  '+name+': timeout waiting for block ACK at '+i);return false}
   }
   if(!await waitFor('DONE',60000)){log('  '+name+': no DONE');return false}
@@ -144,14 +145,21 @@ async function sendPakBuffer(buf){
 }
 document.getElementById('auto').onclick=async()=>{
   if(location.protocol==='file:'){
-    log('Local file:// page: choose sprites.pak with the file picker.');
+    log('Local file:// page: choose sprites.pak with the file picker (no network fetch).');
     document.getElementById('pakfile').click();
     return;
   }
   document.getElementById('auto').disabled=true;
   log('Downloading sprites.pak (~42 MB)...');
-  try{await sendPakBuffer(await fetchSpriteBundle())}
-  catch(e){log('Sprite bundle failed: '+e.message)}finally{document.getElementById('auto').disabled=false}
+  try{
+    await sendPakBuffer(await fetchSpriteBundle());
+  }catch(e){
+    log('Automatic download failed: '+e.message);
+    log('Falling back to local sprites.pak picker.');
+    document.getElementById('pakfile').click();
+  }finally{
+    document.getElementById('auto').disabled=false;
+  }
 };
 document.getElementById('pakfile').onchange=async ev=>{
   const f=ev.target.files && ev.target.files[0];
