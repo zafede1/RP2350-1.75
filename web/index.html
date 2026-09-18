@@ -68,13 +68,15 @@ async function waitFor(token,timeoutMs=8000){
   while(Date.now()<deadline){const s=await readLine(deadline-Date.now());if(s===token)return true;if(s==='ERR'||s===null)return false}return false;
 }
 async function sendOne(name,data){
+  log('Sending '+name+' ('+data.length+' bytes)...');
   await writer.write(enc.encode(`PUT ${name} ${data.length}\n`));
-  if(!await waitFor('OK'))return false;
+  if(!await waitFor('OK',15000)){log('  '+name+': no OK');return false}
   for(let i=0;i<data.length;i+=2048){
     await writer.write(data.slice(i,i+2048));
-    if(!await waitFor('#'))return false;
+    if(!await waitFor('#',15000)){log('  '+name+': timeout waiting for block ACK at '+i);return false}
   }
-  return waitFor('DONE',30000);
+  if(!await waitFor('DONE',60000)){log('  '+name+': no DONE');return false}
+  return true;
 }
 function parsePak(buf){
   const dv=new DataView(buf),td=new TextDecoder();
