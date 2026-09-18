@@ -39,9 +39,10 @@ button{font:inherit;font-weight:500;padding:.6rem 1.2rem;border-radius:10px;bord
     <button id="auto" disabled>⬇️ Load all sprites + Pokédex</button>
     <label style="cursor:pointer;text-decoration:underline">pick <code>.bin</code> files<input id="files" type="file" accept=".bin" multiple disabled hidden></label>
     <label id="pakPickLabel" style="cursor:pointer;text-decoration:underline">pick <code>sprites.pak</code><input id="pakfile" type="file" accept=".pak,application/octet-stream" disabled hidden></label>
+    <a href="https://github.com/zafede1/RP2350-1.75/raw/refs/heads/main/web/sprites.pak?download=1" target="_blank" rel="noopener"><button type="button">⬇️ Download sprites.pak</button></a>
   </div>
   <p class="note">Do not use the pico⚡flash page and the serial uploader at the same time: only one browser program should own the USB connection. Restart the board after the transfer.</p>
-  <p class="note" id="localHelp"><b>Opening this HTML from a folder (file://)?</b> Download <a href="https://github.com/zafede1/RP2350-1.75/raw/refs/heads/main/web/sprites.pak?download=1">sprites.pak</a> first, then press <b>pick sprites.pak</b>. This path does not use CORS.</p>
+  <p class="note" id="localHelp"><b>Opening this HTML from a folder (file://)?</b> Do not use a browser <code>fetch</code>: Chrome blocks local files by design. Click <b>Download sprites.pak</b>, save the file, then click <b>pick sprites.pak</b>. That transfer uses the local file picker and does not use CORS. You can also serve the <code>web</code> folder with a local HTTP server.</p>
   <div class="bar" id="bar"><div></div></div><pre id="log"></pre>
 </div>
 
