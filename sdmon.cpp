@@ -301,7 +301,7 @@ bool sdSerialCommand(const String &line) {
     if (SD.exists(path)) SD.remove(path);
     File f = SD.open(path, FILE_WRITE); if (!f) { Serial.println("ERR"); return true; }
     Serial.println("OK");
-    static uint8_t buf[1024]; uint32_t left = size; Serial.setTimeout(5000);
+    static uint8_t buf[2048]; uint32_t left = size; Serial.setTimeout(10000);
     while (left) {
       size_t want = left > sizeof(buf) ? sizeof(buf) : left; size_t n = Serial.readBytes(buf, want);
       if (!n || f.write(buf, n) != n) { left = 1; break; }
