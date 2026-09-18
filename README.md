@@ -1,16 +1,16 @@
 # TamaPoke
 
-[![Flash in browser](https://img.shields.io/badge/flash-in%20browser-FF6B00?logo=googlechrome&logoColor=white)](https://socquique.github.io/TamaPoke/web/)
+[![Flash in browser](https://img.shields.io/badge/flash-in%20browser-FF6B00?logo=googlechrome&logoColor=white)](https://zafede1.github.io/RP2350-1.75/web/)
 [![MakerWorld](https://img.shields.io/badge/MakerWorld-3D%20case-00AE42?logo=bambulab&logoColor=white)](https://makerworld.com/es/models/2937822-tamapoke-a-pokemon-pokeball-tamagotchi)
-![Board](https://img.shields.io/badge/board-ESP32--S3%20round%20AMOLED-E7352C?logo=espressif&logoColor=white)
-![Firmware](https://img.shields.io/badge/firmware-v1.16-8A2BE2)
-[![CI](https://github.com/socquique/TamaPoke/actions/workflows/ci.yml/badge.svg)](https://github.com/socquique/TamaPoke/actions/workflows/ci.yml)
+![Board](https://img.shields.io/badge/board-RP2350%20round%20AMOLED-4F93C4?logo=raspberrypi&logoColor=white)
+![Firmware](https://img.shields.io/badge/firmware-RP2350%20port-8A2BE2)
+[![CI](https://github.com/zafede1/RP2350-1.75/actions/workflows/ci.yml/badge.svg?branch=rp2350-port)](https://github.com/zafede1/RP2350-1.75/actions/workflows/ci.yml?query=branch%3Arp2350-port)
 ![Code](https://img.shields.io/badge/code-MIT-blue)
 ![Languages](https://img.shields.io/badge/languages-7-FFCB05)
-[![Stars](https://img.shields.io/github/stars/socquique/TamaPoke?style=flat&logo=github&color=yellow)](https://github.com/socquique/TamaPoke/stargazers)
+[![Stars](https://img.shields.io/github/stars/zafede1/RP2350-1.75?style=flat&logo=github&color=yellow)](https://github.com/zafede1/RP2350-1.75/stargazers)
 
 A gen-1-Pokémon-inspired tamagotchi for the
-**Waveshare ESP32-S3-Touch-AMOLED-1.75** (round 466×466 AMOLED, CO5300 driver
+**Waveshare RP2350-Touch-AMOLED-1.75** (round 466×466 AMOLED, CO5300 driver
 over QSPI, CST9217 touch over I2C). Raise any of the 151, evolve it, train it
 and complete them all (shinies included).
 
@@ -18,11 +18,11 @@ and complete them all (shinies included).
 > PMD SpriteCollab (CC BY-NC, Pokémon © Nintendo/Game Freak), and the 3D case is
 > CC BY-NC-SA. See **[License](#license)** and **Credits**.
 
-🔴 **3D-printed Pokéball case + print profiles → [on MakerWorld](https://makerworld.com/es/models/2937822-tamapoke-a-pokemon-pokeball-tamagotchi)** · flash it in your browser → **[web installer](https://socquique.github.io/TamaPoke/web/)**
+🔴 **3D-printed Pokéball case + print profiles → [on MakerWorld](https://makerworld.com/es/models/2937822-tamapoke-a-pokemon-pokeball-tamagotchi)** · flash it in your browser → **[RP2350 web installer](https://zafede1.github.io/RP2350-1.75/web/)**
 
 ## Status
 
-Running on hardware. Implemented: the 151 + shinies animated from microSD, full
+**RP2350 port:** the firmware source has been ported for the Waveshare RP2350-Touch-AMOLED-1.75. Hardware validation and a verified UF2 are still pending. Implemented in the port: the 151 + shinies animated from microSD, full
 life cycle (egg by rarity → evolution → farewell/release/runaway, each gated
 behind a decision dialog), bred-Pokédex with gallery, battle stats (genes +
 training), retention hooks (streak / bond / medals / name), biome + real-time
@@ -123,46 +123,41 @@ SPEED ← minigame, DEFENSE ← 12 h of unbroken good care). *(Battles: on the r
 
 ## Hardware
 
-- Board: [ESP32-S3-Touch-AMOLED-1.75](https://www.waveshare.com/wiki/ESP32-S3-Touch-AMOLED-1.75)
-  — get the **Standard** (no case) or **-G** (GPS, also fits) version; **not the "-B"**
-  (ships with a protective case that won't fit). The separate "1.75**C**" is a different board.
-  - **Where to buy**: [Waveshare store](https://www.waveshare.com/esp32-s3-touch-amoled-1.75.htm) (often on backorder), or the **-G** on Amazon — TamaPoke leaves the GPS unused, the board is otherwise identical: 🇺🇸 [.com](https://www.amazon.com/dp/B0F7XWWMJW?tag=capsuleradar-20) · 🇪🇸 [.es](https://www.amazon.es/dp/B0F7XWWMJW?tag=capsuleradar-21) · 🇩🇪 [.de](https://www.amazon.de/dp/B0F7XWWMJW?tag=capsulerada03-21) · 🇬🇧 [.co.uk](https://www.amazon.co.uk/dp/B0F7XWWMJW?tag=capsulerada0d-21) · 🇮🇹 [.it](https://www.amazon.it/dp/B0F7XWWMJW?tag=capsulerada08-21) · 🇫🇷 [.fr](https://www.amazon.fr/dp/B0F7XWWMJW?tag=capsulerada0e-21). Optional battery — 1100 mAh protected LiPo, MX1.25 plug: 🇪🇸 [.es](https://www.amazon.es/dp/B0F1FGZQS5?tag=capsuleradar-21) · 🇺🇸 [.com](https://www.amazon.com/dp/B0F1FGZQS5?tag=capsuleradar-20) · 🇮🇹 [.it](https://www.amazon.it/dp/B0F1FGZQS5?tag=capsulerada08-21) · 🇫🇷 [.fr](https://www.amazon.fr/dp/B0F1FGZQS5?tag=capsulerada0e-21) (DE/UK: that exact pack is not listed — search for a *protected* 3.7 V LiPo, ~1100 mAh, size **102540**, 1.25 mm micro-JST plug) — check plug polarity against the board first. <sub>Amazon links are affiliate links; as an Amazon Associate I earn from qualifying purchases.</sub>
-  - **MicroSD card** (holds the sprite set — any small, class-10 card works): 🇪🇸 [.es](https://www.amazon.es/s?k=microsd+32gb&tag=capsuleradar-21) · 🇺🇸 [.com](https://www.amazon.com/s?k=microsd+32gb&tag=capsuleradar-20) · 🇩🇪 [.de](https://www.amazon.de/s?k=microsd+32gb&tag=capsulerada03-21) · 🇬🇧 [.co.uk](https://www.amazon.co.uk/s?k=microsd+32gb&tag=capsulerada0d-21) · 🇮🇹 [.it](https://www.amazon.it/s?k=microsd+32gb&tag=capsulerada08-21) · 🇫🇷 [.fr](https://www.amazon.fr/s?k=microsd+32gb&tag=capsulerada0e-21)
-- Round 466×466 AMOLED, **CO5300** driver (QSPI, 80 MHz)
-- Capacitive touch **CST9217** (I2C, address 0x5A)
-- **AXP2101** (power management + battery + PWR button), **PCF85063** (RTC),
-  microSD slot, **ES8311** audio codec (→ amplifier → external speaker on the
-  MX1.25 connector)
-- Pins taken from the [official Waveshare repo](https://github.com/waveshareteam/ESP32-S3-Touch-AMOLED-1.75) (see `pin_config.h`)
+- Board: [Waveshare RP2350-Touch-AMOLED-1.75](https://docs.waveshare.com/RP2350-Touch-AMOLED-1.75)
+- RP2350A, 466×466 AMOLED, CO5300 display controller, CST9217 capacitive touch
+- AXP2101 power management, PCF85063 RTC, QMI8658 IMU, ES8311 audio codec, microSD
+- 520 KB on-chip SRAM and 16 MB flash; the framebuffer is about 434 KB, so the port keeps sprite RAM usage deliberately bounded
+- Pin definitions are taken from the [official Waveshare documentation](https://docs.waveshare.com/RP2350-Touch-AMOLED-1.75) and kept in `pin_config.h`
 
-## Libraries (Arduino IDE / arduino-cli)
+## Build stack
 
-| Library | Author | Use |
-|---|---|---|
-| GFX Library for Arduino (`Arduino_GFX`) | moononournation | CO5300 over QSPI + framebuffer in PSRAM |
-| SensorLib | Lewis He | CST9217 touch + PCF85063 RTC |
-| XPowersLib | Lewis He | AXP2101 PMU (battery, brightness, PWR button) |
-| U8g2 | olikraus | CJK glyphs (`unifont_t_japanese3`, the only Japanese subset that also carries `！？。、「」`); only the font data is used, not its display driver |
-| ESP_I2S (bundled in the ESP32 core) | Espressif | I2S to the ES8311 codec |
+The RP2350 port is built with **Arduino-Pico + arduino-cli**; **Arduino IDE is not required**.
 
-## IDE setup / build
+| Component | Use |
+|---|---|
+| [Arduino-Pico](https://github.com/earlephilhower/arduino-pico) | RP2350 core, USB/PIO support |
+| [Adafruit GFX Library](https://github.com/adafruit/Adafruit-GFX-Library) | Graphics API used by the TamaPoke adapter |
+| Waveshare QSPI/PIO driver | CO5300 AMOLED |
+| CST9217 / AXP2101 / PCF85063 / ES8311 ports | Touch, power, RTC and audio |
 
-- Board: **ESP32S3 Dev Module** · Flash **16MB** · PSRAM **OPI PSRAM**
-  (required: the 466×466×16-bit framebuffer ≈ 434 KB lives in PSRAM) ·
-  Partition Scheme with FAT (e.g. `16M Flash (3MB APP/9MB FATFS)`) ·
-  USB CDC On Boot **Enabled**
+
+## Build / install
+
+The active port lives on the **[`rp2350-port` branch](https://github.com/zafede1/RP2350-1.75/tree/rp2350-port)**.
+
+Build with Arduino-Pico from the command line:
 
 ```bash
-FQBN="esp32:esp32:esp32s3:CDCOnBoot=cdc,FlashSize=16M,PSRAM=opi,PartitionScheme=app3M_fat9M_16MB"
-arduino-cli compile --fqbn "$FQBN" .
-arduino-cli upload -p /dev/cu.usbmodemXXXX --fqbn "$FQBN" .
+arduino-cli core install rp2040:rp2040@6.1.0
+arduino-cli lib install "Adafruit GFX Library"
+arduino-cli compile --fqbn rp2040:rp2040:rpipico2 .
 ```
 
-### Easiest install: the web installer
+The repository CI workflow is [here](https://github.com/zafede1/RP2350-1.75/actions/workflows/ci.yml). When a verified RP2350 UF2 is available, the browser installer uses **[pico⚡flash](https://picoflash.org/)** with the board in BOOTSEL mode.
 
-`web/index.html` flashes the firmware (ESP Web Tools) and pushes the sprites to
-the SD over Web Serial, no Arduino needed. Serve it over HTTPS or `localhost`
-(secure context) and open it in **Chrome/Edge**. See [`web/README.md`](web/README.md).
+### Web installer
+
+**[Open the RP2350 web installer](https://zafede1.github.io/RP2350-1.75/web/)**. It does **not** use the old ESP Web Tools / Improv Wi-Fi Serial flow. Firmware flashing is handled through pico⚡flash, while the same page can push the sprite bundle to the board over Web Serial.
 
 ### Generate and load the sprites yourself
 
@@ -327,7 +322,7 @@ beach, forest, volcano, mountain, snow). Sleeping forces night.
   `sprites.py` (workshop), `pack_pmd.py` / `make_thumbs.py`
   (packers), `pack_bundle.py` (web bundle), `send_sd.py` (SD upload), `touch_log.py`
 - `tools/sdcard/mons/` — the generated .bin files (animated, shiny, PMD, thumbnails)
-- `web/` — the browser installer (ESP Web Tools + Web Serial sprite loader)
+- `web/` — the RP2350 browser installer (pico⚡flash link + Web Serial sprite loader)
 
 ## Serial console (115200, debug)
 
