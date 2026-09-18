@@ -1,6 +1,5 @@
 #include "audio.h"
 #include "pin_config.h"
-#include "sdmon.h"
 #include <Arduino.h>
 #include <I2S.h>
 #include "Preferences.h"
