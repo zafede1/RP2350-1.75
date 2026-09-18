@@ -285,7 +285,17 @@ const uint8_t *SdThumbs::get(int16_t dex) const {
 void sdInvalidateMount() { sdMounted = false; sdReady = false; }
 
 bool sdBegin() {
-  sdReady = SD.begin(SDMMC_CLK, SDMMC_CMD, SDMMC_DATA); sdMounted = sdReady;
+  // Audio and SD share GPIO1/GPIO3 on this board. stopI2S() changes those pins,
+  // so the filesystem must be fully unmounted before reinitializing SDIO.
+  SD.end();
+
+  SDFSConfig cfg(SDMMC_CLK, SDMMC_CMD, SDMMC_DATA);
+  // Match the original project: prepare a fresh/unformatted card automatically.
+  cfg.setAutoFormat(true);
+  SDFS.setConfig(cfg);
+
+  sdReady = SDFS.begin();
+  sdMounted = sdReady;
   if (sdReady) SD.mkdir("/mons");
   return sdReady;
 }
