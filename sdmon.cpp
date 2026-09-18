@@ -141,14 +141,18 @@ const uint8_t *SdThumbs::get(int16_t dex) const {
 }
 
 bool sdBegin() {
-  SD_MMC.setPins(SDMMC_CLK, SDMMC_CMD, SDMMC_DATA);
-  sdReady = SD_MMC.begin("/sdcard", true /* modo 1-bit */, true /* formatea si no monta */);
-  if (sdReady) {
-    Serial.printf("SD montada: %llu MB\n", SD_MMC.cardSize() / (1024ULL * 1024ULL));
-    SD_MMC.mkdir("/mons");
-  } else {
-    Serial.println("SD no detectada (el juego usa los sprites de flash)");
-  }
+  // Audio and SD share GPIO1/GPIO3 on this board. stopI2S() changes those pins,
+  // so the filesystem must be fully unmounted before reinitializing SDIO.
+  SD.end();
+
+  SDFSConfig cfg(SDMMC_CLK, SDMMC_CMD, SDMMC_DATA);
+  // Match the original project: prepare a fresh/unformatted card automatically.
+  cfg.setAutoFormat(true);
+  SDFS.setConfig(cfg);
+
+  sdReady = SDFS.begin();
+  sdMounted = sdReady;
+  if (sdReady) SD.mkdir("/mons");
   return sdReady;
 }
 
