@@ -34,3 +34,21 @@ Serve `/web` from GitHub Pages. HTTPS is provided by Pages automatically. The au
 ## License notes
 
 The firmware port is based on the original TamaPoke project. The browser flasher is [pico⚡flash](https://github.com/piersfinlayson/picoflash), which is MIT licensed. Sprites come from PMD SpriteCollab (CC BY-NC); Pokémon is a trademark of Nintendo / Game Freak.
+
+## Local use on Windows
+
+Do not open index.html directly with file://. Chrome gives local files an opaque origin, which can block local resource loading and browser APIs.
+
+From this directory run:
+
+```bat
+python -m http.server 8000
+```
+
+Then open:
+
+```text
+http://localhost:8000/
+```
+
+Or double-click run-local.bat.
