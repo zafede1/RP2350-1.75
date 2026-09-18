@@ -1,4 +1,5 @@
 #include "sdmon.h"
+#include "audio.h"
 #include "pin_config.h"
 #include <SD.h>
 #include <SDFS.h>
@@ -301,6 +302,12 @@ bool sdBegin() {
 }
 
 bool sdSerialCommand(const String &line) {
+  // Before any SD filesystem command, release the I2S pins shared with SDIO.
+  if (line.startsWith("PUT ") || line == "LS" || line == "SDINFO") {
+    audioPrepareForSd();
+    sdMounted = false;
+    sdReady = false;
+  }
   if (!ensureSdMounted()) { Serial.println("ERR"); return true; }
   if (line.startsWith("PUT ")) {
     int sp = line.lastIndexOf(' ');
