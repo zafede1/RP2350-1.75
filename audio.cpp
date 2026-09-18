@@ -200,6 +200,12 @@ void sfxPlay(uint8_t id) {
   stopI2S();
 }
 
+void audioPrepareForSd() {
+  // SDIO and I2S share GPIO1/GPIO3 on the Waveshare board.
+  // Stop the synchronous SFX stream before mounting/opening files.
+  stopI2S();
+}
+
 void audioSetEnabled(bool on) {
   gOn = on;
   if (!on) stopI2S();
