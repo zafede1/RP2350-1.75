@@ -71,3 +71,21 @@ attribution is allowed); see [`../CREDITS.md`](../CREDITS.md).
 ## Limitations
 
 - Desktop **Chrome/Edge** only (Web Serial isn't in Firefox/Safari).
+
+## Local use on Windows
+
+Do not open index.html directly with file://. Chrome gives local files an opaque origin, which can block local resource loading and browser APIs.
+
+From this directory run:
+
+```bat
+python -m http.server 8000
+```
+
+Then open:
+
+```text
+http://localhost:8000/
+```
+
+Or double-click run-local.bat.
