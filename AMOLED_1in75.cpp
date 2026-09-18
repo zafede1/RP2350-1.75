@@ -57,10 +57,24 @@ void AMOLED_1IN75_Clear(uint16_t Color) {
   QSPI_Deselect(qspi);
 }
 
+static void dmaSendRgb565Row(const uint16_t *src, uint32_t pixels) {
+  // RP2350 is little-endian, while CO5300 expects RGB565 MSB first.
+  // Convert each 16-bit pixel to wire order without changing the framebuffer.
+  static uint8_t row[AMOLED_1IN75_WIDTH * 2];
+  if (pixels > AMOLED_1IN75_WIDTH) pixels = AMOLED_1IN75_WIDTH;
+  for (uint32_t i = 0; i < pixels; ++i) {
+    row[i * 2 + 0] = (uint8_t)(src[i] >> 8);
+    row[i * 2 + 1] = (uint8_t)(src[i] & 0xFF);
+  }
+  dmaSend(row, pixels * 2);
+}
+
 void AMOLED_1IN75_Display(uint16_t *Image) {
   AMOLED_1IN75_SetWindows(0, 0, AMOLED_1IN75_WIDTH, AMOLED_1IN75_HEIGHT);
   QSPI_Select(qspi); QSPI_Pixel_Write(qspi, 0x2c);
-  dmaSend((const uint8_t *)Image, AMOLED_1IN75_WIDTH * AMOLED_1IN75_HEIGHT * 2);
+  for (uint32_t y = 0; y < AMOLED_1IN75_HEIGHT; ++y) {
+    dmaSendRgb565Row(Image + y * AMOLED_1IN75_WIDTH, AMOLED_1IN75_WIDTH);
+  }
   QSPI_Deselect(qspi);
 }
 
@@ -70,11 +84,8 @@ void AMOLED_1IN75_DisplayWindows(uint32_t Xstart, uint32_t Ystart, uint32_t Xend
   if (Yend > AMOLED_1IN75_HEIGHT) Yend = AMOLED_1IN75_HEIGHT;
   AMOLED_1IN75_SetWindows(Xstart, Ystart, Xend, Yend);
   QSPI_Select(qspi); QSPI_Pixel_Write(qspi, 0x2c);
-  channel_config_set_dreq(&c, pio_get_dreq(qspi.pio, qspi.sm, true));
   for (uint32_t y = Ystart; y < Yend; ++y) {
-    const uint8_t *row = (const uint8_t *)Image + (y * AMOLED_1IN75_WIDTH + Xstart) * 2;
-    dma_channel_configure(dma_tx, &c, &qspi.pio->txf[qspi.sm], row, (Xend - Xstart) * 2, true);
-    while (dma_channel_is_busy(dma_tx)) {}
+    dmaSendRgb565Row(Image + y * AMOLED_1IN75_WIDTH + Xstart, Xend - Xstart);
   }
   QSPI_Deselect(qspi);
 }
